@@ -8,18 +8,12 @@
 #include <opencv2\features2d\features2d.hpp>
 #include <opencv2\xfeatures2d\nonfree.hpp>
 
-#include "gms_matcher.h"
+#include "gms_matcher.hpp"
 #include "algorithms.hpp"
 
 using namespace cv;
 using namespace std;
 
-
-/**
-* gmsMatch GMS特征匹配
-* @param img1 待匹配图像1
-* @param img2 待匹配图像2
-*/
 
 void gmsMatch(Mat &img1, Mat &img2) {
     vector<KeyPoint> kp1, kp2;
@@ -60,14 +54,6 @@ void gmsMatch(Mat &img1, Mat &img2) {
     waitKey();
 }
 
-
-/**
-* gmsMatch GMS特征匹配
-* @param img1 图像1
-* @param img2 图像2
-* @param matchL 图像1的匹配点
-* @param matchR 图像2的匹配点
-*/
 void gmsMatch(Mat &img1, Mat &img2, vector<Point2f> &matchL, vector<Point2f> &matchR) {
     vector<KeyPoint> kp1, kp2;
     Mat d1, d2;
@@ -109,14 +95,6 @@ void gmsMatch(Mat &img1, Mat &img2, vector<Point2f> &matchL, vector<Point2f> &ma
     imshow("matches", show);
 }
 
-
-/**
-* extractSIFTFeatures 对图像列表提取SIFT特征
-* @param imageNames     [input]图像名称列表
-* @param keyPoints4All  [output]所有图像特征点位置列表
-* @param descriptor4All [output]所有图像特征描述子列表
-* @param colors4All     [output]所有图像特征点像素列表
-*/
 void extractSIFTFeatures(vector<string>& imageNames,
                          vector<vector<KeyPoint>>& keyPoints4All,
                          vector<Mat>& descriptor4All,
@@ -166,14 +144,6 @@ void extractSIFTFeatures(vector<string>& imageNames,
     //}
 }
 
-
-/**
-* extractSIFTFeatures 对图像列表提取SIFT特征
-* @param images         [input]图像列表
-* @param keyPoints4All  [output]所有图像特征点位置列表
-* @param descriptor4All [output]所有图像特征描述子列表
-* @param colors4All     [output]所有图像特征点像素列表
-*/
 void extractSIFTFeatures(vector<Mat>& images,
                          vector<vector<KeyPoint>>& keyPoints4All,
                          vector<Mat>& descriptor4All,
@@ -219,13 +189,6 @@ void extractSIFTFeatures(vector<Mat>& images,
     //}
 }
 
-
-/**
-* matchSIFTFeatures SIFT特征匹配
-* @param query   图像1特征点的特征描述
-* @param train   图像2特征点的特征描述
-* @param matches 匹配点对
-*/
 void matchSIFTFeatures(Mat& query, Mat& train, vector<DMatch>& matches) {
     vector<vector<DMatch> > knnMatches;
     BFMatcher matcher(NORM_L2);
@@ -256,15 +219,6 @@ void matchSIFTFeatures(Mat& query, Mat& train, vector<DMatch>& matches) {
     }
 }
 
-
-/**
-* getMatchedPoints 获取匹配点对的位置
-* @param p1
-* @param p2
-* @param matches
-* @param out_p1
-* @param out_p2
-*/
 void getMatchedPoints(vector<KeyPoint>& p1, vector<KeyPoint>& p2,
                       vector<DMatch> matches,
                       vector<Point2f>& out_p1, vector<Point2f>& out_p2) {
@@ -276,15 +230,6 @@ void getMatchedPoints(vector<KeyPoint>& p1, vector<KeyPoint>& p2,
     }
 }
 
-
-/**
-* getMatchedColors 获取匹配点对的像素值
-* @param c1
-* @param c2
-* @param matches
-* @param out_c1
-* @param out_c2
-*/
 void getMatchedColors(vector<Vec3b>& c1, vector<Vec3b>& c2, vector<DMatch> matches,
                       vector<Vec3b>& out_c1, vector<Vec3b>& out_c2) {
     out_c1.clear();
@@ -295,14 +240,6 @@ void getMatchedColors(vector<Vec3b>& c1, vector<Vec3b>& c2, vector<DMatch> match
     }
 }
 
-
-/**
- * procCLAHE CLAHE增强
- * @param img 增强的图像
- * @param param2 descriptions...
- * @param param3 descriptions...
- * @return descriptions...
- */
 void procCLAHE(Mat &src, Mat &dst, double clipLimit = 40.0, Size tileGridSize = Size(8, 8)) {
     Mat tempOneChannel, tempBGR;
     cvtColor(src, tempOneChannel, CV_BGR2GRAY);
@@ -315,5 +252,40 @@ void procCLAHE(Mat &src, Mat &dst, double clipLimit = 40.0, Size tileGridSize = 
     cvtColor(tempBGR, dst, CV_GRAY2BGR);
 }
 
+inline Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPoint> &kpt2, vector<DMatch> &inlier, int type) {
+    const int height = max(src1.rows, src2.rows);
+    const int width = src1.cols + src2.cols;
+    Mat output(height, width, CV_8UC3, Scalar(0, 0, 0));
+    src1.copyTo(output(Rect(0, 0, src1.cols, src1.rows)));
+    src2.copyTo(output(Rect(src1.cols, 0, src2.cols, src2.rows)));
 
+    if(type == 1) {
+        for(size_t i = 0; i < inlier.size(); i++) {
+            Point2f left = kpt1[inlier[i].queryIdx].pt;
+            Point2f right = (kpt2[inlier[i].trainIdx].pt + Point2f((float)src1.cols, 0.f));
+            line(output, left, right, Scalar(0, 255, 255));
+        }
+    } else if(type == 2) {
+        for(size_t i = 0; i < inlier.size(); i++) {
+            Point2f left = kpt1[inlier[i].queryIdx].pt;
+            Point2f right = (kpt2[inlier[i].trainIdx].pt + Point2f((float)src1.cols, 0.f));
+            line(output, left, right, Scalar(255, 0, 0));
+        }
+
+        for(size_t i = 0; i < inlier.size(); i++) {
+            Point2f left = kpt1[inlier[i].queryIdx].pt;
+            Point2f right = (kpt2[inlier[i].trainIdx].pt + Point2f((float)src1.cols, 0.f));
+            circle(output, left, 1, Scalar(0, 255, 255), 2);
+            circle(output, right, 1, Scalar(0, 255, 0), 2);
+        }
+    }
+
+    return output;
+}
+
+inline void imresize(Mat &src, int height) {
+    double ratio = src.rows * 1.0 / height;
+    int width = static_cast<int>(src.cols * 1.0 / ratio);
+    resize(src, src, Size(width, height));
+}
 

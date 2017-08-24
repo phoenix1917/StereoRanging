@@ -17,40 +17,6 @@ using namespace std;
 
 //#define UNIT_TEST
 
-// 显示角点提取结果
-bool showCornerExt = true;
-// 进行单目标定（true通过单目标定确定内参，false输入内参）
-bool doSingleCalib = true;
-// 进行双目标定（true通过双目标定确定外参，false输入外参）
-bool doStereoCalib = true;
-// 增强图像
-bool doEnhance = true;
-// 手动选点（true手动选点，false选择ROI中心进行局部特征提取）
-bool manualPoints = false;
-// 特征提取方式（用于manualPoints = false）
-FeatureType type = GMS;
-// ROI大小（横向半径，纵向半径）
-Size roiSize = Size(40, 60);
-
-// 读入的测距图像序列
-vector<Mat> rangingSetL, rangingSetR;
-// 执行增强时的滑动条数据
-int clipL = 20, gridXL = 2, gridYL = 2;
-int clipR = 20, gridXR = 2, gridYR = 2;
-// 临时保存的增强图像
-Mat tempEnhanceL, tempEnhanceR;
-// 用于记录测距图像中的同名点
-Point2f targetL, targetR;
-// 用于记录测距图像中的ROI
-Rect roiL, roiR;
-// 用于特征匹配的ROI图像
-Mat roiImgL, roiImgR;
-// 使用的标定板棋盘格内角点的个数
-Size boardSize;
-// 标定板上每个方格的大小
-float squareSize;
-
-
 #ifdef UNIT_TEST
 int main() {
     
@@ -59,28 +25,15 @@ int main() {
 int main() {
     // 定义所使用的标定板
     usingBoard(3, boardSize, squareSize);
-    // 加载标定所用图像文件的路径
-    ifstream finL("data/20170810/calib1-2_L.txt");
-    ifstream finR("data/20170810/calib1-2_R.txt");
-    // 加载训练所用图像文件的路径
-    ifstream fTrainL("data/20170810/train1_L.txt");
-    ifstream fTrainR("data/20170810/train1_R.txt");
-    // 加载测距所用的图像文件路径
-    ifstream fTestL("data/20170810/test1_L.txt");
-    ifstream fTestR("data/20170810/test1_R.txt");
-    // 保存标定结果的文件
-    ofstream foutL("data/20170810/result_calib1_L.txt");
-    ofstream foutR("data/20170810/result_calib1_R.txt");
-    ofstream foutStereo("data/20170810/result_stereo1.txt");
 
     // 每行读入的图像路径
     string fileName;
     // 读入后的图像序列
     vector<Mat> imageSetL, imageSetR;
-    // 每幅图像的大小
-    Size imageSize;
-    // 输入图像数
-    int imgCount;
+    // 标定图像的大小
+    Size calibImgSize;
+    // 标定图像数
+    int calibImgCount;
     // 找到全部角点的图像数
     int acceptedCount = 0;
     // 找到全部角点的图像编号
@@ -97,35 +50,26 @@ int main() {
     // 双目外参，本征矩阵，基础矩阵
     Mat R, T, E, F;
 
-    // 用于测距的图像的大小
-    Size rangingImgSize;
-    // 用于测距的图像数
-    int rangingImgCount;
-    // 测距图像上的特征点位置
-    vector<Point2f> objectPointsL, objectPointsR;
-    // 测距图像上的特征点像素值
-    vector<Vec3b> objectColorsL, objectColorsR;
-
     // 读取左目图像
     while(getline(finL, fileName)) {
         Mat img = imread(fileName);
         imageSetL.push_back(img);
     }
-    imageSize = imageSetL[0].size();
-    imgCount = imageSetL.size();
+    calibImgSize = imageSetL[0].size();
+    calibImgCount = imageSetL.size();
     // 读取右目图像
     while(getline(finR, fileName)) {
         Mat img = imread(fileName);
         imageSetR.push_back(img);
     }
-    if(imgCount != imageSetR.size()) {
+    if(calibImgCount != imageSetR.size()) {
         cout << "图像对数目不一致，请检查" << endl << endl;
         system("pause");
         return 0;
     }
 
     // 逐图像提取角点
-    for(int i = 0; i < imgCount; i++) {
+    for(int i = 0; i < calibImgCount; i++) {
         bool foundAllCornersL = false, foundAllCornersR = false;
         vector<Point2f> cornerBufL, cornerBufR;
         Mat viewL, viewR, grayL, grayR;
@@ -237,8 +181,8 @@ int main() {
     objectPoints.resize(allCornersL.size(), objectPoints[0]);
     
     // 初始化内参数矩阵
-    cameraMatrixL = initCameraMatrix2D(objectPoints, allCornersL, imageSize);
-    cameraMatrixR = initCameraMatrix2D(objectPoints, allCornersR, imageSize);
+    cameraMatrixL = initCameraMatrix2D(objectPoints, allCornersL, calibImgSize);
+    cameraMatrixR = initCameraMatrix2D(objectPoints, allCornersR, calibImgSize);
     cout << "内参数预估：" << endl;
     cout << "cameraMatrix_L = " << endl << cameraMatrixL << endl << endl;
     cout << "cameraMatrix_R = " << endl << cameraMatrixR << endl << endl;
@@ -272,7 +216,7 @@ int main() {
         // CALIB_FIX_TAUX_TAUY                 固定(tauX, tauY)参数值
         
         // 左目
-        double reprojectionErrorL = calibrateCamera(objectPoints, allCornersL, imageSize,
+        double reprojectionErrorL = calibrateCamera(objectPoints, allCornersL, calibImgSize,
                                                     cameraMatrixL, distCoeffsL, rVecsL, tVecsL,
                                                     stdDevIntrinsicsL, stdDevExtrinsicsL, perViewErrorsL,
                                                     CV_CALIB_USE_INTRINSIC_GUESS +
@@ -282,7 +226,7 @@ int main() {
         cout << "------------------------------------------" << endl << endl;
 
         // 右目
-        double reprojectionErrorR = calibrateCamera(objectPoints, allCornersR, imageSize,
+        double reprojectionErrorR = calibrateCamera(objectPoints, allCornersR, calibImgSize,
                                                     cameraMatrixR, distCoeffsR, rVecsR, tVecsR,
                                                     stdDevIntrinsicsR, stdDevExtrinsicsR, perViewErrorsR,
                                                     CV_CALIB_USE_INTRINSIC_GUESS + 
@@ -333,7 +277,7 @@ int main() {
         double reprojErrorStereo = stereoCalibrate(objectPoints, allCornersL, allCornersR,
                                                    cameraMatrixL, distCoeffsL,
                                                    cameraMatrixR, distCoeffsR,
-                                                   imageSize, R, T, E, F,
+                                                   calibImgSize, R, T, E, F,
                                                    CALIB_USE_INTRINSIC_GUESS +
                                                    CALIB_FIX_PRINCIPAL_POINT);
 
@@ -380,54 +324,196 @@ int main() {
         cout << endl << "Rodrigues = " << endl << rod << endl;
     }
 
+
+    // 用于测距的图像的大小
+    Size trainImgSize, testImgSize;
+    // 用于测距的图像数
+    int trainImgCount, testImgCount;
+    // 测距图像上的特征点位置
+    vector<Point2f> objectPointsL, objectPointsR;
+    // 测距图像上的特征点像素值
+    vector<Vec3b> objectColorsL, objectColorsR;
+    // 三角化重建出的世界坐标系坐标
+    Mat structure, structure3D;
+    // 测距点中位线距离
+    vector<double> dist;
+
+    // 用于保存所有图像的匹配点
+    vector<vector<Point2f>> allPointsL, allPointsR;
+    // 训练图像中的目标真实距离
+    vector<float> groundTruth;
+
     // 训练
     // 读取左目训练图像
     while(getline(fTrainL, fileName)) {
         Mat img = imread(fileName);
-        rangingSetL.push_back(img);
+        trainSetL.push_back(img);
     }
-    rangingImgSize = rangingSetL[0].size();
-    rangingImgCount = rangingSetL.size();
+    trainImgSize = trainSetL[0].size();
+    trainImgCount = trainSetL.size();
     // 读取右目训练图像
     while(getline(fTrainR, fileName)) {
         Mat img = imread(fileName);
-        rangingSetR.push_back(img);
+        trainSetR.push_back(img);
+    }
+
+    for(int i = 0; i < trainImgCount; i++) {
+        // 中值滤波
+        medianBlur(trainSetL[i], tempEnhanceL, 3);
+        medianBlur(trainSetR[i], tempEnhanceR, 3);
+        trainSetL[i] = tempEnhanceL.clone();
+        trainSetR[i] = tempEnhanceR.clone();
+
+        if(doEnhance) {
+            // CLAHE增强
+            procCLAHE(trainSetL[i], tempEnhanceL, clipL / 10.0, Size(gridXL, gridYL));
+            procCLAHE(trainSetR[i], tempEnhanceR, clipR / 10.0, Size(gridXR, gridYR));
+            namedWindow("enhance_leftcam");
+            createTrackbar("Clip", "enhance_leftcam", &clipL, MAX_CLIP_LIMIT, onEnhanceTrackbarL, (void *)&i);
+            createTrackbar("Grid X", "enhance_leftcam", &gridXL, MAX_GRID_SIZE_X, onEnhanceTrackbarL, (void *)&i);
+            createTrackbar("Grid Y", "enhance_leftcam", &gridYL, MAX_GRID_SIZE_Y, onEnhanceTrackbarL, (void *)&i);
+            setMouseCallback("enhance_leftcam", onEnhanceMouseL, (void *)&i);
+            imshow("enhance_leftcam", tempEnhanceL);
+
+            namedWindow("enhance_rightcam");
+            createTrackbar("Clip", "enhance_rightcam", &clipR, MAX_CLIP_LIMIT, onEnhanceTrackbarR, (void *)&i);
+            createTrackbar("Grid X", "enhance_rightcam", &gridXR, MAX_GRID_SIZE_X, onEnhanceTrackbarR, (void *)&i);
+            createTrackbar("Grid Y", "enhance_rightcam", &gridYR, MAX_GRID_SIZE_Y, onEnhanceTrackbarR, (void *)&i);
+            setMouseCallback("enhance_rightcam", onEnhanceMouseR, (void *)&i);
+            imshow("enhance_rightcam", tempEnhanceR);
+
+            cout << "增强图像" << endl << endl;
+            waitKey();
+        }
+
+        imshow("train_leftcam", trainSetL[i]);
+        imshow("train_rightcam", trainSetR[i]);
+        if(manualPoints) {
+            // 逐图像选取同名点
+            targetL = Point(0, 0);
+            targetR = Point(0, 0);
+            setMouseCallback("Ranging_leftcam", onMouseL, (void *)&i);
+            setMouseCallback("Ranging_rightcam", onMouseR, (void *)&i);
+            cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
+            waitKey();
+            cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
+            cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
+            cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+            // 重建坐标
+            objectPointsL.clear();
+            objectPointsR.clear();
+            objectPointsL.push_back(targetL);
+            objectPointsR.push_back(targetR);
+            reconstruct(cameraMatrixL, cameraMatrixR, R, T,
+                        objectPointsL, objectPointsR, structure);
+            toPoints3D(structure, structure3D);
+            // 中位线距离
+            dist = ranging(structure3D, R, T);
+            cout << "测距点深度 " << dist[0] << " m" << endl << endl;
+            cout << "------------------------------------------" << endl << endl;
+        } else {
+            // 逐图像选取ROI
+            setMouseCallback("train_leftcam", onMouseL_ROI, (void *)&i);
+            setMouseCallback("train_rightcam", onMouseR_ROI, (void *)&i);
+            cout << "在第" << i + 1 << "组图像中各选择一个ROI进行特征匹配：" << endl;
+            waitKey();
+            cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
+            cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
+            cout << "ROI大小：L(" << roiL.width << ", " << roiL.height << ")   ";
+            cout << "R(" << roiR.width << ", " << roiR.height << ")" << endl;
+            cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+
+            vector<vector<KeyPoint>> keyPoints4All;
+            vector<Mat> descriptor4All;
+            vector<vector<Vec3b>> colors4All;
+            vector<DMatch> matches;
+            vector<Mat> rois = { roiImgL, roiImgR };
+
+            switch(type) {
+            case SIFT:
+                // 局部特征匹配
+                extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
+                matchSIFTFeatures(descriptor4All[0], descriptor4All[1], matches);
+                getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, objectPointsL, objectPointsR);
+                getMatchedColors(colors4All[0], colors4All[1], matches, objectColorsL, objectColorsR);
+                break;
+            case GMS:
+                gmsMatch(roiImgL, roiImgR, objectPointsL, objectPointsR);
+                break;
+            default:
+                break;
+            }
+
+            if(objectPointsL.size() == 0) {
+                cout << "没有找到匹配点，手动选择一组" << endl;
+                imshow("train_leftcam", trainSetL[i]);
+                imshow("train_rightcam", trainSetR[i]);
+                // 手动选择一组点
+                targetL = Point(0, 0);
+                targetR = Point(0, 0);
+                setMouseCallback("train_leftcam", onMouseL, (void *)&i);
+                setMouseCallback("train_rightcam", onMouseR, (void *)&i);
+                cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
+                waitKey();
+                cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
+                cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
+                cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+                objectPointsL.clear();
+                objectPointsR.clear();
+                objectPointsL.push_back(targetL);
+                objectPointsR.push_back(targetR);
+            } else {
+                // 将ROI坐标恢复到原图像中
+                for(int i = 0; i < objectPointsL.size(); i++) {
+                    objectPointsL[i] += Point2f(roiL.x, roiL.y);
+                    objectPointsR[i] += Point2f(roiR.x, roiR.y);
+                }
+            }
+
+            // 重建坐标
+            reconstruct(cameraMatrixL, cameraMatrixR, R, T,
+                        objectPointsL, objectPointsR, structure);
+            toPoints3D(structure, structure3D);
+            // 中位线距离
+            dist = ranging(structure3D, R, T);
+            for(auto iter = dist.cbegin(); iter < dist.cend(); ++iter) {
+                cout << "测距点深度 " << *iter << " m" << endl;
+            }
+            cout << endl;
+            waitKey();
+            destroyAllWindows();
+        }
     }
 
     // 记录所有训练图像的匹配点坐标
-
+    //saveCorrspondingPoints("points.yaml", );
 
 
     // 测试
     // 读取左目测距图像
     while(getline(fTestL, fileName)) {
         Mat img = imread(fileName);
-        rangingSetL.push_back(img);
+        testSetL.push_back(img);
     }
-    rangingImgSize = rangingSetL[0].size();
-    rangingImgCount = rangingSetL.size();
+    testImgSize = testSetL[0].size();
+    testImgCount = testSetL.size();
     // 读取右目测距图像
     while(getline(fTestR, fileName)) {
         Mat img = imread(fileName);
-        rangingSetR.push_back(img);
+        testSetR.push_back(img);
     }
 
-    // 匹配点对flag, 重建出的世界坐标系坐标（齐次）
-    Mat mask, structure, structure3D;
-    // 测距点中位线距离
-    vector<double> dist;
-
-    for(int i = 0; i < rangingImgCount; i++) {
+    for(int i = 0; i < testImgCount; i++) {
         //// 中值滤波
-        //medianBlur(rangingSetL[i], tempEnhanceL, 3);
-        //medianBlur(rangingSetR[i], tempEnhanceR, 3);
-        //rangingSetL[i] = tempEnhanceL.clone();
-        //rangingSetR[i] = tempEnhanceR.clone();
+        //medianBlur(testSetL[i], tempEnhanceL, 3);
+        //medianBlur(testSetR[i], tempEnhanceR, 3);
+        //testSetL[i] = tempEnhanceL.clone();
+        //testSetR[i] = tempEnhanceR.clone();
 
         if(doEnhance) {
             // CLAHE增强
-            procCLAHE(rangingSetL[i], tempEnhanceL, clipL / 10.0, Size(gridXL, gridYL));
-            procCLAHE(rangingSetR[i], tempEnhanceR, clipR / 10.0, Size(gridXR, gridYR));
+            procCLAHE(testSetL[i], tempEnhanceL, clipL / 10.0, Size(gridXL, gridYL));
+            procCLAHE(testSetR[i], tempEnhanceR, clipR / 10.0, Size(gridXR, gridYR));
             namedWindow("enhance_leftcam");
             createTrackbar("Clip", "enhance_leftcam", &clipL, MAX_CLIP_LIMIT, onEnhanceTrackbarL, (void *)&i);
             createTrackbar("Grid X", "enhance_leftcam", &gridXL, MAX_GRID_SIZE_X, onEnhanceTrackbarL, (void *)&i);
@@ -446,8 +532,8 @@ int main() {
             waitKey();
         }
 
-        imshow("Ranging_leftcam", rangingSetL[i]);
-        imshow("Ranging_rightcam", rangingSetR[i]);
+        imshow("Ranging_leftcam", testSetL[i]);
+        imshow("Ranging_rightcam", testSetR[i]);
         if(manualPoints) {
             // 逐图像选取同名点
             targetL = Point(0, 0);
@@ -506,8 +592,8 @@ int main() {
 
             if(objectPointsL.size() == 0) {
                 cout << "没有找到匹配点，手动选择一组" << endl;
-                imshow("Ranging_leftcam", rangingSetL[i]);
-                imshow("Ranging_rightcam", rangingSetR[i]);
+                imshow("Ranging_leftcam", testSetL[i]);
+                imshow("Ranging_rightcam", testSetR[i]);
                 // 手动选择一组点
                 targetL = Point(0, 0);
                 targetR = Point(0, 0);
@@ -551,38 +637,10 @@ int main() {
 #endif
 
 
-/**
- * 同名点选取鼠标回调事件（左）
- * @param event 鼠标操作事件类型
- *          enum cv::MouseEventTypes
- *          EVENT_MOUSEMOVE     滑动
- *          EVENT_LBUTTONDOWN   左键按下
- *          EVENT_RBUTTONDOWN   右键按下
- *          EVENT_MBUTTONDOWN   中键按下
- *          EVENT_LBUTTONUP     左键释放
- *          EVENT_RBUTTONUP     右键释放
- *          EVENT_MBUTTONUP     中键释放
- *          EVENT_LBUTTONDBLCLK 左键双击
- *          EVENT_RBUTTONDBLCLK 右键双击
- *          EVENT_MBUTTONDBLCLK 中键双击
- *          EVENT_MOUSEWHEEL    滚轮上下滑动
- *          EVENT_MOUSEHWHEEL   滚轮左右滑动
- * @param x     鼠标位于窗口的x坐标位置（窗口左上角默认为原点，向右为x轴，向下为y轴）
- * @param y     鼠标位于窗口的y坐标位置
- * @param flags 鼠标拖拽及键鼠联合事件标志位
- *          enum cv::MouseEventFlags
- *          EVENT_FLAG_LBUTTON  左键拖拽
- *          EVENT_FLAG_RBUTTON  右键拖拽
- *          EVENT_FLAG_MBUTTON  中键拖拽
- *          EVENT_FLAG_CTRLKEY  Ctrl键按下
- *          EVENT_FLAG_SHIFTKEY Shift键按下
- *          EVENT_FLAG_ALTKEY   Alt键按下
- * @param param 自定义数据
- */
 void onMouseL(int event, int x, int y, int flags, void *param) {
     if(event == EVENT_LBUTTONUP) {
         int *i = (int *)param;
-        Mat frame = rangingSetL[*i].clone();
+        Mat frame = testSetL[*i].clone();
         // 记录当前位置的坐标，画一个点
         targetL = Point(x, y);
         circle(frame, targetL, 2, Scalar(97, 98, 255), CV_FILLED, LINE_AA, 0);
@@ -591,19 +649,22 @@ void onMouseL(int event, int x, int y, int flags, void *param) {
     }
 }
 
+void onMouseL_Train(int event, int x, int y, int flags, void *param) {
+    if(event == EVENT_LBUTTONUP) {
+        int *i = (int *)param;
+        Mat frame = trainSetL[*i].clone();
+        // 记录当前位置的坐标，画一个点
+        targetL = Point(x, y);
+        circle(frame, targetL, 2, Scalar(97, 98, 255), CV_FILLED, LINE_AA, 0);
+        circle(frame, targetL, 20, Scalar(75, 83, 171), 2, LINE_AA, 0);
+        imshow("Ranging_leftcam", frame);
+    }
+}
 
-/**
- * onMouseL 局部特征提取ROI选取事件（左）
- * @param event 鼠标操作事件类型
- * @param x     鼠标位于窗口的x坐标位置
- * @param y     鼠标位于窗口的y坐标位置
- * @param flags 鼠标拖拽及键鼠联合事件标志位
- * @param param 自定义数据
- */
 void onMouseL_ROI(int event, int x, int y, int flags, void *param) {
     if(event == EVENT_LBUTTONUP) {
         int *i = (int *)param;
-        Mat frame = rangingSetL[*i].clone();
+        Mat frame = testSetL[*i].clone();
         // 记录当前位置的坐标，画一个点
         targetL = Point(x, y);
         getROI(frame, targetL, roiSize, roiL, roiImgL);
@@ -612,19 +673,22 @@ void onMouseL_ROI(int event, int x, int y, int flags, void *param) {
     }
 }
 
+void onMouseL_ROI_Train(int event, int x, int y, int flags, void *param) {
+    if(event == EVENT_LBUTTONUP) {
+        int *i = (int *)param;
+        Mat frame = trainSetL[*i].clone();
+        // 记录当前位置的坐标，画一个点
+        targetL = Point(x, y);
+        getROI(frame, targetL, roiSize, roiL, roiImgL);
+        rectangle(frame, roiL, Scalar(97, 98, 255), 1, LINE_AA, 0);
+        imshow("Ranging_leftcam", frame);
+    }
+}
 
-/**
- * 同名点选取鼠标回调事件（右）
- * @param event 鼠标操作事件类型
- * @param x     鼠标位于窗口的x坐标位置
- * @param y     鼠标位于窗口的y坐标位置
- * @param flags 鼠标拖拽及键鼠联合事件标志位
- * @param param 自定义数据
- */
 void onMouseR(int event, int x, int y, int flags, void *param) {
     if(event == EVENT_LBUTTONUP) {
         int *i = (int *)param;
-        Mat frame = rangingSetR[*i].clone();
+        Mat frame = testSetR[*i].clone();
         // 记录当前位置的坐标，画一个点
         targetR = Point(x, y);
         circle(frame, targetR, 2, Scalar(97, 98, 255), CV_FILLED, LINE_AA, 0);
@@ -633,19 +697,22 @@ void onMouseR(int event, int x, int y, int flags, void *param) {
     }
 }
 
+void onMouseR_Train(int event, int x, int y, int flags, void *param) {
+    if(event == EVENT_LBUTTONUP) {
+        int *i = (int *)param;
+        Mat frame = trainSetR[*i].clone();
+        // 记录当前位置的坐标，画一个点
+        targetR = Point(x, y);
+        circle(frame, targetR, 2, Scalar(97, 98, 255), CV_FILLED, LINE_AA, 0);
+        circle(frame, targetR, 20, Scalar(75, 83, 171), 2, LINE_AA, 0);
+        imshow("Ranging_rightcam", frame);
+    }
+}
 
-/**
- * onMouseL 局部特征提取ROI选取事件（右）
- * @param event 鼠标操作事件类型
- * @param x     鼠标位于窗口的x坐标位置
- * @param y     鼠标位于窗口的y坐标位置
- * @param flags 鼠标拖拽及键鼠联合事件标志位
- * @param param 自定义数据
- */
 void onMouseR_ROI(int event, int x, int y, int flags, void *param) {
     if(event == EVENT_LBUTTONUP) {
         int *i = (int *)param;
-        Mat frame = rangingSetR[*i].clone();
+        Mat frame = testSetR[*i].clone();
         // 记录当前位置的坐标，画一个点
         targetR = Point(x, y);
         getROI(frame, targetR, roiSize, roiR, roiImgR);
@@ -654,15 +721,18 @@ void onMouseR_ROI(int event, int x, int y, int flags, void *param) {
     }
 }
 
+void onMouseR_ROI_Train(int event, int x, int y, int flags, void *param) {
+    if(event == EVENT_LBUTTONUP) {
+        int *i = (int *)param;
+        Mat frame = trainSetR[*i].clone();
+        // 记录当前位置的坐标，画一个点
+        targetR = Point(x, y);
+        getROI(frame, targetR, roiSize, roiR, roiImgR);
+        rectangle(frame, roiR, Scalar(97, 98, 255), 1, LINE_AA, 0);
+        imshow("Ranging_rightcam", frame);
+    }
+}
 
-/**
- * getROI 根据选取的点在输入图像上生成ROI区域，并返回ROI图像
- * @param img     [input]输入图像
- * @param center  [input]输入的ROI中心点
- * @param roiSize [input]ROI的大小（半径）
- * @param roi     [output]ROI区域位置
- * @param roiImg  [output]ROI图像
- */
 void getROI(Mat& img, Point center, Size roiSize, Rect& roi, Mat& roiImg) {
     Point startPoint, endPoint;
     Size imgSize = img.size();
@@ -702,57 +772,54 @@ void getROI(Mat& img, Point center, Size roiSize, Rect& roi, Mat& roiImg) {
     roiImg = img(roi).clone();
 }
 
-
-/**
- * onEnhanceTrackbarL 图像增强参数调整回调（左目）
- * @param pos TrackBar当前数值
- * @param userdata 用户数据（optional）
- */
 void onEnhanceTrackbarL(int pos, void *userdata) {
     int *i = (int *)userdata;
     if(clipL && gridXL && gridYL) {
         double clipVal = double(clipL) / 10;
-        procCLAHE(rangingSetL[*i], tempEnhanceL, clipVal, Size(gridXL, gridYL));
+        procCLAHE(testSetL[*i], tempEnhanceL, clipVal, Size(gridXL, gridYL));
         imshow("enhance_leftcam", tempEnhanceL);
     }
 }
 
+void onEnhanceTrackbarL_Train(int pos, void *userdata) {
+    int *i = (int *)userdata;
+    if(clipL && gridXL && gridYL) {
+        double clipVal = double(clipL) / 10;
+        procCLAHE(trainSetL[*i], tempEnhanceL, clipVal, Size(gridXL, gridYL));
+        imshow("enhance_leftcam", tempEnhanceL);
+    }
+}
 
-/**
-* onEnhanceTrackbarR 图像增强参数调整回调（右目）
-* @param pos TrackBar当前数值
-* @param userdata 用户数据（optional）
-*/
 void onEnhanceTrackbarR(int pos, void *userdata) {
     int *i = (int *)userdata;
     if(clipR && gridXR && gridYR) {
         double clipVal = double(clipR) / 10;
-        procCLAHE(rangingSetR[*i], tempEnhanceR, clipVal, Size(gridXR, gridYR));
+        procCLAHE(testSetR[*i], tempEnhanceR, clipVal, Size(gridXR, gridYR));
         imshow("enhance_rightcam", tempEnhanceR);
     }
 }
 
+void onEnhanceTrackbarR_Train(int pos, void *userdata) {
+    int *i = (int *)userdata;
+    if(clipR && gridXR && gridYR) {
+        double clipVal = double(clipR) / 10;
+        procCLAHE(trainSetR[*i], tempEnhanceR, clipVal, Size(gridXR, gridYR));
+        imshow("enhance_rightcam", tempEnhanceR);
+    }
+}
 
-/**
- * onEnhanceMouseL 增强窗口鼠标回调事件（左）
- * @param event 鼠标操作事件类型
- * @param x     鼠标位于窗口的x坐标位置
- * @param y     鼠标位于窗口的y坐标位置
- * @param flags 鼠标拖拽及键鼠联合事件标志位
- * @param param 自定义数据
- */
 void onEnhanceMouseL(int event, int x, int y, int flags, void* param) {
     int *i = (int *)param;
 
     switch(event) {
     case EVENT_LBUTTONDOWN:
-        imshow("enhance_leftcam", rangingSetL[*i]);
+        imshow("enhance_leftcam", testSetL[*i]);
         break;
     case EVENT_LBUTTONUP:
         imshow("enhance_leftcam", tempEnhanceL);
         break;
     case EVENT_RBUTTONUP:
-        tempEnhanceL.copyTo(rangingSetL[*i]);
+        tempEnhanceL.copyTo(testSetL[*i]);
         destroyWindow("enhance_leftcam");
         break;
     default:
@@ -760,38 +827,59 @@ void onEnhanceMouseL(int event, int x, int y, int flags, void* param) {
     }
 }
 
+void onEnhanceMouseL_Train(int event, int x, int y, int flags, void* param) {
+    int *i = (int *)param;
 
-/**
-* onEnhanceMouseR 增强窗口鼠标回调事件（右）
-* @param event 鼠标操作事件类型
-* @param x     鼠标位于窗口的x坐标位置
-* @param y     鼠标位于窗口的y坐标位置
-* @param flags 鼠标拖拽及键鼠联合事件标志位
-* @param param 自定义数据
-*/
+    switch(event) {
+    case EVENT_LBUTTONDOWN:
+        imshow("enhance_leftcam", trainSetL[*i]);
+        break;
+    case EVENT_LBUTTONUP:
+        imshow("enhance_leftcam", tempEnhanceL);
+        break;
+    case EVENT_RBUTTONUP:
+        tempEnhanceL.copyTo(trainSetL[*i]);
+        destroyWindow("enhance_leftcam");
+        break;
+    default:
+        break;
+    }
+}
+
 void onEnhanceMouseR(int event, int x, int y, int flags, void* param) {
     int *i = (int *)param;
 
     switch(event) {
     case EVENT_LBUTTONDOWN:
-        imshow("enhance_rightcam", rangingSetR[*i]);
+        imshow("enhance_rightcam", testSetR[*i]);
         break;
     case EVENT_LBUTTONUP:
         imshow("enhance_rightcam", tempEnhanceR);
         break;
     case EVENT_RBUTTONUP:
-        tempEnhanceR.copyTo(rangingSetR[*i]);
+        tempEnhanceR.copyTo(testSetR[*i]);
         destroyWindow("enhance_rightcam");
         break;
     }
 }
 
+void onEnhanceMouseR_Train(int event, int x, int y, int flags, void* param) {
+    int *i = (int *)param;
 
-/**
- * 数字转字符串
- * @param num     输入数字
- * @return outStr 返回对应的字符串
- */
+    switch(event) {
+    case EVENT_LBUTTONDOWN:
+        imshow("enhance_rightcam", trainSetR[*i]);
+        break;
+    case EVENT_LBUTTONUP:
+        imshow("enhance_rightcam", tempEnhanceR);
+        break;
+    case EVENT_RBUTTONUP:
+        tempEnhanceR.copyTo(trainSetR[*i]);
+        destroyWindow("enhance_rightcam");
+        break;
+    }
+}
+
 string num2str(int num) {
     ostringstream s1;
     s1 << num;
@@ -799,19 +887,6 @@ string num2str(int num) {
     return(outStr);
 }
 
-
-/**
- * 输出标定结果到控制台。
- * 输出内参数矩阵、畸变向量、总重投影误差；
- * 输出焦距及误差、主点坐标及误差、畸变向量及误差；
- * 输出畸变向量其他值的误差、外参数误差、每幅图像的重投影误差。
- * @param cameraMatrix
- * @param distCoeffs
- * @param reprojectionError
- * @param stdDevIntrinsics
- * @param stdDevExtrinsics
- * @param perViewErrors
- */
 void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError,
                        Mat &stdDevIntrinsics, Mat &stdDevExtrinsics, vector<double> &perViewErrors) {
     cout << "标定结果：" << endl;
@@ -859,22 +934,8 @@ void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionEr
     cout << endl << endl;
 }
 
-
-/**
- * 输出标定结果到文件。
- * 输出内参数矩阵、畸变向量、总重投影误差；
- * 输出焦距及误差、主点坐标及误差、畸变向量及误差；
- * 输出畸变向量其他值的误差、外参数误差、每幅图像的重投影误差。
- * @param cameraMatrix
- * @param distCoeffs
- * @param reprojectionError
- * @param stdDevIntrinsics
- * @param stdDevExtrinsics
- * @param perViewErrors
- * @param fout
- */
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError, 
-                       Mat &stdDevIntrinsics, Mat &stdDevExtrinsics, 
+void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError,
+                       Mat &stdDevIntrinsics, Mat &stdDevExtrinsics,
                        vector<double> &perViewErrors, ofstream &fout) {
     fout << "标定结果：" << endl;
     fout << "cameraMatrix = " << endl << cameraMatrix << endl << endl;
@@ -921,17 +982,7 @@ void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionEr
     fout << endl << endl;
 }
 
-
-/**
- * 输出标定结果到控制台。
- * 输出内参数矩阵、畸变向量、总重投影误差；
- * 输出焦距及误差、主点坐标及误差、畸变向量及误差；
- * @param cameraMatrix
- * @param distCoeffs
- * @param reprojectionError
- * @param stdDevIntrinsics
- */
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, 
+void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs,
                        double reprojectionError, Mat &stdDevIntrinsics) {
     cout << "标定结果：" << endl;
     cout << "cameraMatrix = " << endl << cameraMatrix << endl << endl;
@@ -954,15 +1005,6 @@ void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs,
     cout << stdDevIntrinsics.at<double>(8) << "]" << endl << endl << endl;
 }
 
-
-/**
- * 输出标定结果到文件。
- * 输出内参数矩阵、畸变向量、总重投影误差；
- * 输出焦距、主点坐标、畸变向量；
- * @param cameraMatrix
- * @param distCoeffs
- * @param reprojectionError
- */
 void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError) {
     cout << endl << "标定结果：" << endl;
     cout << "cameraMatrix = " << endl << cameraMatrix << endl << endl;
@@ -979,5 +1021,3 @@ void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionEr
     cout << distCoeffs.at<double>(2) << ", " << distCoeffs.at<double>(3) << ", ";
     cout << distCoeffs.at<double>(4) << "]" << endl << endl;
 }
-
-
