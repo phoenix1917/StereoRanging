@@ -45,4 +45,11 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+.db
+.opendb
+.sln
+StereoRanging/Debug
 StereoRanging/StereoRanging/data
+StereoRanging/StereoRanging/x64
+.vcxproj
+.vcxproj.filters
