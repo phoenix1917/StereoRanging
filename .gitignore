@@ -51,5 +51,12 @@ Temporary Items
 StereoRanging/Debug
 StereoRanging/StereoRanging/data
 StereoRanging/StereoRanging/x64
+StereoRanging/x64
 .vcxproj
 .vcxproj.filters
+StereoRanging/StereoRanging.VC.db
+*.sln
+StereoRanging/StereoRanging/StereoRanging.vcxproj
+StereoRanging/StereoRanging/StereoRanging.vcxproj.filters
+*.suo
+/StereoRanging/StereoRanging.VC.VC.opendb
