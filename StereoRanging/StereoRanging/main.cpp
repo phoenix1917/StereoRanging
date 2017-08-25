@@ -338,83 +338,62 @@ int main() {
     // 测距点中位线距离
     vector<double> dist;
 
-    // 用于保存所有图像的匹配点
-    vector<vector<Point2f>> allPointsL, allPointsR;
-    // 训练图像中的目标真实距离
-    vector<float> groundTruth;
-
-    // 训练
-    // 读取左目训练图像
-    while(getline(fTrainL, fileName)) {
-        Mat img = imread(fileName);
-        trainSetL.push_back(img);
-    }
-    trainImgSize = trainSetL[0].size();
-    trainImgCount = trainSetL.size();
-    // 读取右目训练图像
-    while(getline(fTrainR, fileName)) {
-        Mat img = imread(fileName);
-        trainSetR.push_back(img);
-    }
-
-    for(int i = 0; i < trainImgCount; i++) {
-        // 中值滤波
-        medianBlur(trainSetL[i], tempEnhanceL, 3);
-        medianBlur(trainSetR[i], tempEnhanceR, 3);
-        trainSetL[i] = tempEnhanceL.clone();
-        trainSetR[i] = tempEnhanceR.clone();
-
-        if(doEnhance) {
-            // CLAHE增强
-            procCLAHE(trainSetL[i], tempEnhanceL, clipL / 10.0, Size(gridXL, gridYL));
-            procCLAHE(trainSetR[i], tempEnhanceR, clipR / 10.0, Size(gridXR, gridYR));
-            namedWindow("enhance_leftcam");
-            createTrackbar("Clip", "enhance_leftcam", &clipL, MAX_CLIP_LIMIT, onEnhanceTrackbarL, (void *)&i);
-            createTrackbar("Grid X", "enhance_leftcam", &gridXL, MAX_GRID_SIZE_X, onEnhanceTrackbarL, (void *)&i);
-            createTrackbar("Grid Y", "enhance_leftcam", &gridYL, MAX_GRID_SIZE_Y, onEnhanceTrackbarL, (void *)&i);
-            setMouseCallback("enhance_leftcam", onEnhanceMouseL, (void *)&i);
-            imshow("enhance_leftcam", tempEnhanceL);
-
-            namedWindow("enhance_rightcam");
-            createTrackbar("Clip", "enhance_rightcam", &clipR, MAX_CLIP_LIMIT, onEnhanceTrackbarR, (void *)&i);
-            createTrackbar("Grid X", "enhance_rightcam", &gridXR, MAX_GRID_SIZE_X, onEnhanceTrackbarR, (void *)&i);
-            createTrackbar("Grid Y", "enhance_rightcam", &gridYR, MAX_GRID_SIZE_Y, onEnhanceTrackbarR, (void *)&i);
-            setMouseCallback("enhance_rightcam", onEnhanceMouseR, (void *)&i);
-            imshow("enhance_rightcam", tempEnhanceR);
-
-            cout << "增强图像" << endl << endl;
-            waitKey();
+    if(doTrain) {
+        // 训练
+        // 读取左目训练图像
+        while(getline(fTrainL, fileName)) {
+            Mat img = imread(fileName);
+            trainSetL.push_back(img);
+        }
+        trainImgSize = trainSetL[0].size();
+        trainImgCount = trainSetL.size();
+        // 读取右目训练图像
+        while(getline(fTrainR, fileName)) {
+            Mat img = imread(fileName);
+            trainSetR.push_back(img);
         }
 
-        imshow("train_leftcam", trainSetL[i]);
-        imshow("train_rightcam", trainSetR[i]);
-        if(manualPoints) {
-            // 逐图像选取同名点
-            targetL = Point(0, 0);
-            targetR = Point(0, 0);
-            setMouseCallback("Ranging_leftcam", onMouseL, (void *)&i);
-            setMouseCallback("Ranging_rightcam", onMouseR, (void *)&i);
-            cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
-            waitKey();
-            cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
-            cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
-            cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
-            // 重建坐标
-            objectPointsL.clear();
-            objectPointsR.clear();
-            objectPointsL.push_back(targetL);
-            objectPointsR.push_back(targetR);
-            reconstruct(cameraMatrixL, cameraMatrixR, R, T,
-                        objectPointsL, objectPointsR, structure);
-            toPoints3D(structure, structure3D);
-            // 中位线距离
-            dist = ranging(structure3D, R, T);
-            cout << "测距点深度 " << dist[0] << " m" << endl << endl;
-            cout << "------------------------------------------" << endl << endl;
-        } else {
+        // 用于保存所有图像的匹配点
+        vector<vector<Point2f>> allCorrPointsL, allCorrPointsR;
+        // 训练图像中的目标真实距离
+        vector<float> groundTruth(trainImgCount);
+        // 所有匹配点组数
+        int corrPointsCount = 0;
+
+        for(int i = 0; i < trainImgCount; i++) {
+            //// 中值滤波
+            //medianBlur(trainSetL[i], tempEnhanceL, 3);
+            //medianBlur(trainSetR[i], tempEnhanceR, 3);
+            //trainSetL[i] = tempEnhanceL.clone();
+            //trainSetR[i] = tempEnhanceR.clone();
+
+            if(doEnhance) {
+                // CLAHE增强
+                procCLAHE(trainSetL[i], tempEnhanceL, clipL / 10.0, Size(gridXL, gridYL));
+                procCLAHE(trainSetR[i], tempEnhanceR, clipR / 10.0, Size(gridXR, gridYR));
+                namedWindow("enhance_leftcam");
+                createTrackbar("Clip", "enhance_leftcam", &clipL, MAX_CLIP_LIMIT, onEnhanceTrackbarL_Train, (void *)&i);
+                createTrackbar("Grid X", "enhance_leftcam", &gridXL, MAX_GRID_SIZE_X, onEnhanceTrackbarL_Train, (void *)&i);
+                createTrackbar("Grid Y", "enhance_leftcam", &gridYL, MAX_GRID_SIZE_Y, onEnhanceTrackbarL_Train, (void *)&i);
+                setMouseCallback("enhance_leftcam", onEnhanceMouseL_Train, (void *)&i);
+                imshow("enhance_leftcam", tempEnhanceL);
+
+                namedWindow("enhance_rightcam");
+                createTrackbar("Clip", "enhance_rightcam", &clipR, MAX_CLIP_LIMIT, onEnhanceTrackbarR_Train, (void *)&i);
+                createTrackbar("Grid X", "enhance_rightcam", &gridXR, MAX_GRID_SIZE_X, onEnhanceTrackbarR_Train, (void *)&i);
+                createTrackbar("Grid Y", "enhance_rightcam", &gridYR, MAX_GRID_SIZE_Y, onEnhanceTrackbarR_Train, (void *)&i);
+                setMouseCallback("enhance_rightcam", onEnhanceMouseR_Train, (void *)&i);
+                imshow("enhance_rightcam", tempEnhanceR);
+
+                cout << "增强图像" << endl << endl;
+                waitKey();
+            }
+
+            imshow("train_leftcam", trainSetL[i]);
+            imshow("train_rightcam", trainSetR[i]);
             // 逐图像选取ROI
-            setMouseCallback("train_leftcam", onMouseL_ROI, (void *)&i);
-            setMouseCallback("train_rightcam", onMouseR_ROI, (void *)&i);
+            setMouseCallback("train_leftcam", onMouseL_ROI_Train, (void *)&i);
+            setMouseCallback("train_rightcam", onMouseR_ROI_Train, (void *)&i);
             cout << "在第" << i + 1 << "组图像中各选择一个ROI进行特征匹配：" << endl;
             waitKey();
             cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
@@ -451,8 +430,8 @@ int main() {
                 // 手动选择一组点
                 targetL = Point(0, 0);
                 targetR = Point(0, 0);
-                setMouseCallback("train_leftcam", onMouseL, (void *)&i);
-                setMouseCallback("train_rightcam", onMouseR, (void *)&i);
+                setMouseCallback("train_leftcam", onMouseL_Train, (void *)&i);
+                setMouseCallback("train_rightcam", onMouseR_Train, (void *)&i);
                 cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
                 waitKey();
                 cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
@@ -470,6 +449,11 @@ int main() {
                 }
             }
 
+            // 保存匹配点
+            allCorrPointsL.push_back(objectPointsL);
+            allCorrPointsR.push_back(objectPointsR);
+            corrPointsCount += objectPointsL.size();
+
             // 重建坐标
             reconstruct(cameraMatrixL, cameraMatrixR, R, T,
                         objectPointsL, objectPointsR, structure);
@@ -481,13 +465,36 @@ int main() {
             }
             cout << endl;
             waitKey();
+
+            // 记录ground truth
+            cout << "输入测距点实际距离： ";
+            cin >> groundTruth[i];
+            cout << endl;
+
             destroyAllWindows();
         }
+
+        // 记录所有训练图像的匹配点坐标
+        saveCorrspondingPoints("CorrPoints.yaml", cameraMatrixL, cameraMatrixR, R, T, allCorrPointsL, allCorrPointsR, corrPointsCount, groundTruth);
+        cout << "已记录所有匹配点坐标，训练完成后回车继续" << endl;
+        waitKey();
     }
 
-    // 记录所有训练图像的匹配点坐标
-    //saveCorrspondingPoints("points.yaml", );
-
+    cout << "输入训练后的参数：" << endl;
+    cout << "K1 = " << endl;
+    cin >> cameraMatrixL.at<double>(0, 0) >> cameraMatrixL.at<double>(0, 1) >> cameraMatrixL.at<double>(0, 2);
+    cin >> cameraMatrixL.at<double>(1, 0) >> cameraMatrixL.at<double>(1, 1) >> cameraMatrixL.at<double>(1, 2);
+    cin >> cameraMatrixL.at<double>(2, 0) >> cameraMatrixL.at<double>(2, 1) >> cameraMatrixL.at<double>(2, 2);
+    cout << "K2 = " << endl;
+    cin >> cameraMatrixR.at<double>(0, 0) >> cameraMatrixR.at<double>(0, 1) >> cameraMatrixR.at<double>(0, 2);
+    cin >> cameraMatrixR.at<double>(1, 0) >> cameraMatrixR.at<double>(1, 1) >> cameraMatrixR.at<double>(1, 2);
+    cin >> cameraMatrixR.at<double>(2, 0) >> cameraMatrixR.at<double>(2, 1) >> cameraMatrixR.at<double>(2, 2);
+    cout << "R = " << endl;
+    cin >> R.at<double>(0, 0) >> R.at<double>(0, 1) >> R.at<double>(0, 2);
+    cin >> R.at<double>(1, 0) >> R.at<double>(1, 1) >> R.at<double>(1, 2);
+    cin >> R.at<double>(2, 0) >> R.at<double>(2, 1) >> R.at<double>(2, 2);
+    cout << endl << "t = " << endl;
+    cin >> T.at<double>(0, 0) >> T.at<double>(1, 0) >> T.at<double>(2, 0);
 
     // 测试
     // 读取左目测距图像
@@ -557,6 +564,7 @@ int main() {
             dist = ranging(structure3D, R, T);
             cout << "测距点深度 " << dist[0] << " m" << endl << endl;
             cout << "------------------------------------------" << endl << endl;
+            waitKey();
         } else {
             // 逐图像选取ROI
             setMouseCallback("Ranging_leftcam", onMouseL_ROI, (void *)&i);
@@ -657,7 +665,7 @@ void onMouseL_Train(int event, int x, int y, int flags, void *param) {
         targetL = Point(x, y);
         circle(frame, targetL, 2, Scalar(97, 98, 255), CV_FILLED, LINE_AA, 0);
         circle(frame, targetL, 20, Scalar(75, 83, 171), 2, LINE_AA, 0);
-        imshow("Ranging_leftcam", frame);
+        imshow("train_leftcam", frame);
     }
 }
 
@@ -681,7 +689,7 @@ void onMouseL_ROI_Train(int event, int x, int y, int flags, void *param) {
         targetL = Point(x, y);
         getROI(frame, targetL, roiSize, roiL, roiImgL);
         rectangle(frame, roiL, Scalar(97, 98, 255), 1, LINE_AA, 0);
-        imshow("Ranging_leftcam", frame);
+        imshow("train_leftcam", frame);
     }
 }
 
@@ -705,7 +713,7 @@ void onMouseR_Train(int event, int x, int y, int flags, void *param) {
         targetR = Point(x, y);
         circle(frame, targetR, 2, Scalar(97, 98, 255), CV_FILLED, LINE_AA, 0);
         circle(frame, targetR, 20, Scalar(75, 83, 171), 2, LINE_AA, 0);
-        imshow("Ranging_rightcam", frame);
+        imshow("train_rightcam", frame);
     }
 }
 
@@ -729,7 +737,7 @@ void onMouseR_ROI_Train(int event, int x, int y, int flags, void *param) {
         targetR = Point(x, y);
         getROI(frame, targetR, roiSize, roiR, roiImgR);
         rectangle(frame, roiR, Scalar(97, 98, 255), 1, LINE_AA, 0);
-        imshow("Ranging_rightcam", frame);
+        imshow("train_rightcam", frame);
     }
 }
 

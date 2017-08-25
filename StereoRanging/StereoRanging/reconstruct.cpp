@@ -288,30 +288,32 @@ void saveStructure(string fileName, vector<Mat>& rotations,
 }
 
 void saveCorrspondingPoints(string fileName, Mat K1, Mat K2, Mat R, Mat t, 
-                            vector<vector<Point2f>> points1, vector<vector<Point2f>> points2, vector<float> groundTruth) {
-    //FileStorage fs(fileName, FileStorage::WRITE);
-    //fs << "K1" << K1;
-    //fs << "K2" << K2;
-    //fs << "R" << R;
-    //fs << "t" << t;
-    //fs << "Image Count" << (int)points1.size();
-    //fs << "Points" << "[";
-    //for(size_t i = 0; i < points1.size(); ++i) {
-    //    fs << "Image" << i << "[";
-    //    fs << "L" << "[";
-    //    for(auto iter = points1[i].begin(); iter < points1[i].end(); ++iter) {
-    //        fs << *iter;
-    //    }
-    //    fs << "]";
-    //    fs << "R" << "[";
-    //    for(auto iter = points2[i].begin(); iter < points2[i].end(); ++iter) {
-    //        fs << *iter;
-    //    }
-    //    fs << "]";
-    //    fs << "Ground Truth" << groundTruth[i];
-    //    fs << "]";
-    //}
-    //fs << "]";
+                            vector<vector<Point2f>> points1, vector<vector<Point2f>> points2, 
+                            int corrPointsCount, vector<float> groundTruth) {
+    FileStorage fs(fileName, FileStorage::WRITE);
+    fs << "K1" << K1;
+    fs << "K2" << K2;
+    fs << "R" << R;
+    fs << "t" << t;
+    fs << "ImageCount" << (int)points1.size();
+    fs << "CorrPointsCount" << corrPointsCount;
+    for(size_t i = 0; i < points1.size(); ++i) {
+        ostringstream s;
+        s << i + 1;
+        string imgNum = s.str();
+        fs << "L" + imgNum << "[:";
+        for(auto iter = points1[i].begin(); iter < points1[i].end(); ++iter) {
+            fs << *iter;
+        }
+        fs << "]";
+        fs << "R" + imgNum << "[:";
+        for(auto iter = points2[i].begin(); iter < points2[i].end(); ++iter) {
+            fs << *iter;
+        }
+        fs << "]";
+        fs << "GroundTruth" + imgNum << groundTruth[i];
+    }
+    fs.release();
 }
 
 vector<double> ranging(Mat structure, Mat R, Mat t) {

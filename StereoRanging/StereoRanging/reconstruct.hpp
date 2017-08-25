@@ -154,7 +154,7 @@ void saveStructure(string fileName, vector<Mat>& rotations, vector<Mat>& motions
 * @param points2 第2组匹配点坐标
 * @param groundTruth 真实测距值
 */
-void saveCorrspondingPoints(string fileName, Mat K1, Mat K2, Mat R, Mat t, vector<vector<Point2f>> points1, vector<vector<Point2f>> points2, vector<float> groundTruth);
+void saveCorrspondingPoints(string fileName, Mat K1, Mat K2, Mat R, Mat t, vector<vector<Point2f>> points1, vector<vector<Point2f>> points2, int corrPointsCount, vector<float> groundTruth);
 
 /**
 * ranging 通过R，t计算中位线距离

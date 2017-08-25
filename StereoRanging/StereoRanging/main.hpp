@@ -16,7 +16,7 @@ using namespace std;
 enum FeatureType { SIFT, GMS };
 
 // 显示角点提取结果
-bool showCornerExt = true;
+bool showCornerExt = false;
 // 进行单目标定（true通过单目标定确定内参，false输入内参）
 bool doSingleCalib = true;
 // 进行双目标定（true通过双目标定确定外参，false输入外参）
@@ -25,6 +25,8 @@ bool doStereoCalib = true;
 bool doEnhance = true;
 // 手动选点（true手动选点，false选择ROI中心进行局部特征提取）
 bool manualPoints = false;
+// 是否对训练图像进行特性匹配，输出匹配点
+bool doTrain = true;
 // 特征提取方式（用于manualPoints = false）
 FeatureType type = GMS;
 // ROI大小（横向半径，纵向半径）
