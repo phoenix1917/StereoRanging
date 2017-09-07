@@ -478,23 +478,23 @@ int main() {
         saveCorrspondingPoints("CorrPoints.yaml", cameraMatrixL, cameraMatrixR, R, T, allCorrPointsL, allCorrPointsR, corrPointsCount, groundTruth);
         cout << "已记录所有匹配点坐标，训练完成后回车继续" << endl;
         waitKey();
-    }
 
-    cout << "输入训练后的参数：" << endl;
-    cout << "K1 = " << endl;
-    cin >> cameraMatrixL.at<double>(0, 0) >> cameraMatrixL.at<double>(0, 1) >> cameraMatrixL.at<double>(0, 2);
-    cin >> cameraMatrixL.at<double>(1, 0) >> cameraMatrixL.at<double>(1, 1) >> cameraMatrixL.at<double>(1, 2);
-    cin >> cameraMatrixL.at<double>(2, 0) >> cameraMatrixL.at<double>(2, 1) >> cameraMatrixL.at<double>(2, 2);
-    cout << "K2 = " << endl;
-    cin >> cameraMatrixR.at<double>(0, 0) >> cameraMatrixR.at<double>(0, 1) >> cameraMatrixR.at<double>(0, 2);
-    cin >> cameraMatrixR.at<double>(1, 0) >> cameraMatrixR.at<double>(1, 1) >> cameraMatrixR.at<double>(1, 2);
-    cin >> cameraMatrixR.at<double>(2, 0) >> cameraMatrixR.at<double>(2, 1) >> cameraMatrixR.at<double>(2, 2);
-    cout << "R = " << endl;
-    cin >> R.at<double>(0, 0) >> R.at<double>(0, 1) >> R.at<double>(0, 2);
-    cin >> R.at<double>(1, 0) >> R.at<double>(1, 1) >> R.at<double>(1, 2);
-    cin >> R.at<double>(2, 0) >> R.at<double>(2, 1) >> R.at<double>(2, 2);
-    cout << endl << "t = " << endl;
-    cin >> T.at<double>(0, 0) >> T.at<double>(1, 0) >> T.at<double>(2, 0);
+        cout << "输入训练后的参数：" << endl;
+        cout << "K1 = " << endl;
+        cin >> cameraMatrixL.at<double>(0, 0) >> cameraMatrixL.at<double>(0, 1) >> cameraMatrixL.at<double>(0, 2);
+        cin >> cameraMatrixL.at<double>(1, 0) >> cameraMatrixL.at<double>(1, 1) >> cameraMatrixL.at<double>(1, 2);
+        cin >> cameraMatrixL.at<double>(2, 0) >> cameraMatrixL.at<double>(2, 1) >> cameraMatrixL.at<double>(2, 2);
+        cout << "K2 = " << endl;
+        cin >> cameraMatrixR.at<double>(0, 0) >> cameraMatrixR.at<double>(0, 1) >> cameraMatrixR.at<double>(0, 2);
+        cin >> cameraMatrixR.at<double>(1, 0) >> cameraMatrixR.at<double>(1, 1) >> cameraMatrixR.at<double>(1, 2);
+        cin >> cameraMatrixR.at<double>(2, 0) >> cameraMatrixR.at<double>(2, 1) >> cameraMatrixR.at<double>(2, 2);
+        cout << "R = " << endl;
+        cin >> R.at<double>(0, 0) >> R.at<double>(0, 1) >> R.at<double>(0, 2);
+        cin >> R.at<double>(1, 0) >> R.at<double>(1, 1) >> R.at<double>(1, 2);
+        cin >> R.at<double>(2, 0) >> R.at<double>(2, 1) >> R.at<double>(2, 2);
+        cout << endl << "t = " << endl;
+        cin >> T.at<double>(0, 0) >> T.at<double>(1, 0) >> T.at<double>(2, 0);
+    }
 
     // 测试
     // 读取左目测距图像

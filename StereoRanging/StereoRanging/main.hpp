@@ -23,10 +23,12 @@ bool doSingleCalib = true;
 bool doStereoCalib = true;
 // 增强图像
 bool doEnhance = true;
+// 是否使用视差图进行测距
+bool disparity = false;
 // 手动选点（true手动选点，false选择ROI中心进行局部特征提取）
 bool manualPoints = false;
 // 是否对训练图像进行特性匹配，输出匹配点
-bool doTrain = true;
+bool doTrain = false;
 // 特征提取方式（用于manualPoints = false）
 FeatureType type = GMS;
 // ROI大小（横向半径，纵向半径）
