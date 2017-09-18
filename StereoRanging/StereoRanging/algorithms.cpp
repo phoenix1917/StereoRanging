@@ -230,6 +230,17 @@ void getMatchedPoints(vector<KeyPoint>& p1, vector<KeyPoint>& p2,
     }
 }
 
+void getMatchedPoints(vector<KeyPoint>& p1, vector<KeyPoint>& p2,
+                      vector<DMatch> matches,
+                      vector<KeyPoint>& out_p1, vector<KeyPoint>& out_p2) {
+    out_p1.clear();
+    out_p2.clear();
+    for(int i = 0; i < matches.size(); ++i) {
+        out_p1.push_back(p1[matches[i].queryIdx]);
+        out_p2.push_back(p2[matches[i].trainIdx]);
+    }
+}
+
 void getMatchedColors(vector<Vec3b>& c1, vector<Vec3b>& c2, vector<DMatch> matches,
                       vector<Vec3b>& out_c1, vector<Vec3b>& out_c2) {
     out_c1.clear();
@@ -252,7 +263,7 @@ void procCLAHE(Mat &src, Mat &dst, double clipLimit = 40.0, Size tileGridSize = 
     cvtColor(tempBGR, dst, CV_GRAY2BGR);
 }
 
-inline Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPoint> &kpt2, vector<DMatch> &inlier, int type) {
+Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPoint> &kpt2, vector<DMatch> &inlier, int type) {
     const int height = max(src1.rows, src2.rows);
     const int width = src1.cols + src2.cols;
     Mat output(height, width, CV_8UC3, Scalar(0, 0, 0));
@@ -283,9 +294,44 @@ inline Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPo
     return output;
 }
 
+Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPoint> &kpt2, int type) {
+    const int height = max(src1.rows, src2.rows);
+    const int width = src1.cols + src2.cols;
+    Mat output(height, width, CV_8UC3, Scalar(0, 0, 0));
+    src1.copyTo(output(Rect(0, 0, src1.cols, src1.rows)));
+    src2.copyTo(output(Rect(src1.cols, 0, src2.cols, src2.rows)));
+
+    if(type == 1) {
+        for(size_t i = 0; i < kpt1.size(); i++) {
+            Point2f left = kpt1[i].pt;
+            Point2f right = (kpt2[i].pt + Point2f((float)src1.cols, 0.f));
+            line(output, left, right, Scalar(0, 255, 255));
+        }
+    } else if(type == 2) {
+        for(size_t i = 0; i < kpt1.size(); i++) {
+            Point2f left = kpt1[i].pt;
+            Point2f right = (kpt2[i].pt + Point2f((float)src1.cols, 0.f));
+            line(output, left, right, Scalar(255, 0, 0));
+        }
+
+        for(size_t i = 0; i < kpt1.size(); i++) {
+            Point2f left = kpt1[i].pt;
+            Point2f right = (kpt2[i].pt + Point2f((float)src1.cols, 0.f));
+            circle(output, left, 1, Scalar(0, 255, 255), 2);
+            circle(output, right, 1, Scalar(0, 255, 0), 2);
+        }
+    }
+
+    return output;
+}
+
 inline void imresize(Mat &src, int height) {
     double ratio = src.rows * 1.0 / height;
     int width = static_cast<int>(src.cols * 1.0 / ratio);
     resize(src, src, Size(width, height));
 }
 
+double compensate(double a, double b, double c, double d, double x) {
+     double k = a * exp(b * x) + c * exp(d * x);
+     return k;
+}

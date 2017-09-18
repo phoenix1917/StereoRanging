@@ -66,6 +66,8 @@ void matchSIFTFeatures(Mat& query, Mat& train, vector<DMatch>& matches);
 */
 void getMatchedPoints(vector<KeyPoint>& p1, vector<KeyPoint>& p2, vector<DMatch> matches, vector<Point2f>& out_p1, vector<Point2f>& out_p2);
 
+void getMatchedPoints(vector<KeyPoint>& p1, vector<KeyPoint>& p2, vector<DMatch> matches, vector<KeyPoint>& out_p1, vector<KeyPoint>& out_p2);
+
 /**
 * getMatchedColors 获取匹配点对的像素值
 * @param c1
@@ -85,6 +87,10 @@ void getMatchedColors(vector<Vec3b>& c1, vector<Vec3b>& c2, vector<DMatch> match
 */
 void procCLAHE(Mat &src, Mat &dst, double clipLimit, Size tileGridSize);
 
-inline Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPoint> &kpt2, vector<DMatch> &inlier, int type);
+Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPoint> &kpt2, vector<DMatch> &inlier, int type);
+
+Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPoint> &kpt2, int type);
 
 inline void imresize(Mat &src, int height);
+
+double compensate(double a, double b, double c, double d, double x);

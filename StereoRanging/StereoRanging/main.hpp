@@ -9,6 +9,7 @@
 #include <opencv2\highgui\highgui.hpp>
 #include <opencv2\features2d\features2d.hpp>
 #include <opencv2\xfeatures2d\nonfree.hpp>
+#include "createFit.h"
 
 using namespace cv;
 using namespace std;
@@ -23,16 +24,20 @@ bool doSingleCalib = true;
 bool doStereoCalib = true;
 // 增强图像
 bool doEnhance = true;
-// 是否使用视差图进行测距
-bool disparity = false;
-// 手动选点（true手动选点，false选择ROI中心进行局部特征提取）
-bool manualPoints = false;
-// 是否对训练图像进行特性匹配，输出匹配点
-bool doTrain = false;
+// 保存增强的图像（标定图像）
+bool doSaveEnhancedImg = false;
+// 进行畸变矫正
+bool doDistortionCorrect = false;
+// 是否训练补偿模型
+bool doTrain = true;
+// 对匹配点的距离进行处理，得到唯一值（true返回唯一值，false返回所有匹配点距离）
+bool processRange = true;
+// 对测距值进行补偿
+bool doCompensate = true;
 // 特征提取方式（用于manualPoints = false）
 FeatureType type = GMS;
 // ROI大小（横向半径，纵向半径）
-Size roiSize = Size(40, 60);
+Size roiSize = Size(45, 75);
 
 // 读入的测距图像序列
 vector<Mat> trainSetL, trainSetR;
@@ -53,19 +58,33 @@ Size boardSize;
 // 标定板上每个方格的大小
 float squareSize;
 
+// 使用的数据集
+String dataset = "20170909";
+// 使用的标定数据组别
+String calibset = "calib2";
+// 使用的训练数据组别
+String trainset = "train2-2";
+// 使用的测试数据组别
+String testset = "test2-all";
+// 用于保存测距值文件的后缀
+String testlabel = "compensate";
+
 // 加载标定所用图像文件的路径
-ifstream finL("data/20170810/calib1-2_L.txt");
-ifstream finR("data/20170810/calib1-2_R.txt");
+ifstream finL("data/" + dataset + "/" + calibset + "_L.txt");
+ifstream finR("data/" + dataset + "/" + calibset + "_R.txt");
+// 保存增强图像（标定图像）的路径
+String pathEnhanced = "data/" + dataset + "/" + calibset + "_enhanced/";
 // 加载训练所用图像文件的路径
-ifstream fTrainL("data/20170810/train1_L.txt");
-ifstream fTrainR("data/20170810/train1_R.txt");
+ifstream fTrainL("data/" + dataset + "/" + trainset + "_L.txt");
+ifstream fTrainR("data/" + dataset + "/" + trainset + "_R.txt");
 // 加载测距所用的图像文件路径
-ifstream fTestL("data/20170810/test1_L.txt");
-ifstream fTestR("data/20170810/test1_R.txt");
+ifstream fTestL("data/" + dataset + "/" + testset + "_L.txt");
+ifstream fTestR("data/" + dataset + "/" + testset + "_R.txt");
+ofstream foutTest("data/" + dataset + "/result_" + testset + "_" + calibset + "_" + testlabel + ".txt");
 // 保存标定结果的文件
-ofstream foutL("data/20170810/result_calib1_L.txt");
-ofstream foutR("data/20170810/result_calib1_R.txt");
-ofstream foutStereo("data/20170810/result_stereo1.txt");
+ofstream foutL("data/" + dataset + "/result_" + calibset + "_L.txt");
+ofstream foutR("data/" + dataset + "/result_" + calibset + "_R.txt");
+ofstream foutStereo("data/" + dataset + "/result_" + calibset + "_stereo.txt");
 
 #define MAX_CLIP_LIMIT 200
 #define MAX_GRID_SIZE_X 100

@@ -50,6 +50,7 @@ int main() {
     // 双目外参，本征矩阵，基础矩阵
     Mat R, T, E, F;
 
+    
     // 读取左目图像
     while(getline(finL, fileName)) {
         Mat img = imread(fileName);
@@ -91,13 +92,18 @@ int main() {
             viewR = imageSetR[i].clone();
             break;
         }
-
         procCLAHE(viewL, imageSetL[i], 2.0, Size(2, 2));
         procCLAHE(viewR, imageSetR[i], 2.0, Size(2, 2));
         viewL = imageSetL[i].clone();
         viewR = imageSetR[i].clone();
         cvtColor(viewL, grayL, CV_RGB2GRAY);
         cvtColor(viewR, grayR, CV_RGB2GRAY);
+
+        // 保存增强的图像
+        if(doSaveEnhancedImg) {
+            imwrite(pathEnhanced + "L_" + num2str(i + 1) + ".jpg", viewL);
+            imwrite(pathEnhanced + "R_" + num2str(i + 1) + ".jpg", viewR);
+        }
 
         // 寻找棋盘格的内角点位置
         // flags:
@@ -106,9 +112,9 @@ int main() {
         // CV_CALIB_CB_FILTER_QUADS
         // CALIB_CB_FAST_CHECK
         foundAllCornersL = findChessboardCorners(grayL, boardSize, cornerBufL,
-                                                 CV_CALIB_CB_NORMALIZE_IMAGE);
+                                                    CV_CALIB_CB_NORMALIZE_IMAGE);
         foundAllCornersR = findChessboardCorners(grayR, boardSize, cornerBufR,
-                                                 CV_CALIB_CB_NORMALIZE_IMAGE);
+                                                    CV_CALIB_CB_NORMALIZE_IMAGE);
 
         if(showCornerExt) {
             // 绘制内角点。若检出全部角点，连线展示；若未检出，绘制检出的点
@@ -127,9 +133,9 @@ int main() {
             viewR = imageSetR[i].clone();
             // 寻找亚像素级角点，只能处理灰度图
             cornerSubPix(grayL, cornerBufL, Size(10, 10), Size(-1, -1),
-                         TermCriteria(TermCriteria::COUNT + TermCriteria::EPS, 30, 0.01));
+                            TermCriteria(TermCriteria::COUNT + TermCriteria::EPS, 30, 0.01));
             cornerSubPix(grayR, cornerBufR, Size(10, 10), Size(-1, -1),
-                         TermCriteria(TermCriteria::COUNT + TermCriteria::EPS, 30, 0.01));
+                            TermCriteria(TermCriteria::COUNT + TermCriteria::EPS, 30, 0.01));
             allCornersL.push_back(cornerBufL);
             allCornersR.push_back(cornerBufR);
             if(showCornerExt) {
@@ -239,23 +245,35 @@ int main() {
         printCalibResults(cameraMatrixL, distCoeffsL, reprojectionErrorL, stdDevIntrinsicsL, stdDevExtrinsicsL, perViewErrorsL, foutL);
         printCalibResults(cameraMatrixR, distCoeffsR, reprojectionErrorR, stdDevIntrinsicsR, stdDevExtrinsicsR, perViewErrorsR, foutR);
     } else {
-        string useInit;
-        cout << "使用预估值？ [y]/[other]   ";
-        cin >> useInit;
-        if(useInit.compare("y") != 0) {
-            // 手动输入内参数
-            cout << "输入内参数：" << endl;
-            cout << "左目焦距(fx, fy)： ";
-            cin >> cameraMatrixL.at<double>(0, 0) >> cameraMatrixL.at<double>(1, 1);
-            cout << "左目主点坐标(Cx, Cy)： ";
-            cin >> cameraMatrixL.at<double>(0, 2) >> cameraMatrixL.at<double>(1, 2);
-            cout << endl << endl;
-            cout << "右目焦距(fx, fy)： ";
-            cin >> cameraMatrixR.at<double>(0, 0) >> cameraMatrixR.at<double>(1, 1);
-            cout << "右目主点坐标(Cx, Cy)： ";
-            cin >> cameraMatrixR.at<double>(0, 2) >> cameraMatrixR.at<double>(1, 2);
-            cout << endl << "------------------------------------------" << endl << endl;
-        }
+        // 手动输入内参数
+        cout << "输入内参数：" << endl;
+        cout << "左目焦距(fx, fy)： ";
+        cin >> cameraMatrixL.at<double>(0, 0) >> cameraMatrixL.at<double>(1, 1);
+        cout << "左目主点坐标(Cx, Cy)： ";
+        cin >> cameraMatrixL.at<double>(0, 2) >> cameraMatrixL.at<double>(1, 2);
+        cout << endl << endl;
+        cout << "右目焦距(fx, fy)： ";
+        cin >> cameraMatrixR.at<double>(0, 0) >> cameraMatrixR.at<double>(1, 1);
+        cout << "右目主点坐标(Cx, Cy)： ";
+        cin >> cameraMatrixR.at<double>(0, 2) >> cameraMatrixR.at<double>(1, 2);
+        cout << endl << "------------------------------------------" << endl << endl;
+
+        // 指定内参数
+        //cameraMatrixL.at<double>(0, 0) = 8131.6;
+        //cameraMatrixL.at<double>(1, 1) = 8854.1;
+        //cameraMatrixL.at<double>(0, 2) = 360;
+        //cameraMatrixL.at<double>(1, 2) = 288;
+
+        //cameraMatrixR.at<double>(0, 0) = 8112.8;
+        //cameraMatrixR.at<double>(1, 1) = 8831.9;
+        //cameraMatrixR.at<double>(0, 2) = 360;
+        //cameraMatrixR.at<double>(1, 2) = 288;
+
+        //cout << "cameraMatrixL = " << endl;
+        //cout << cameraMatrixL << endl << endl;
+        //cout << "cameraMatrixR = " << endl;
+        //cout << cameraMatrixR << endl << endl;
+        //cout << "------------------------------------------" << endl << endl;
     }
 
     if(doStereoCalib) {
@@ -278,8 +296,11 @@ int main() {
                                                    cameraMatrixL, distCoeffsL,
                                                    cameraMatrixR, distCoeffsR,
                                                    calibImgSize, R, T, E, F,
-                                                   CALIB_USE_INTRINSIC_GUESS +
-                                                   CALIB_FIX_PRINCIPAL_POINT);
+                                                   CALIB_FIX_INTRINSIC);
+
+        //CALIB_USE_INTRINSIC_GUESS +
+        //CALIB_FIX_PRINCIPAL_POINT
+
 
         // Rodrigues变换（输出逆时针旋转的角度）
         Mat rod;
@@ -353,12 +374,10 @@ int main() {
             trainSetR.push_back(img);
         }
 
-        // 用于保存所有图像的匹配点
-        vector<vector<Point2f>> allCorrPointsL, allCorrPointsR;
+        // 用于保存所有图像的测距值
+        vector<double> trainVal(trainImgCount);
         // 训练图像中的目标真实距离
-        vector<float> groundTruth(trainImgCount);
-        // 所有匹配点组数
-        int corrPointsCount = 0;
+        vector<double> groundTruth(trainImgCount);
 
         for(int i = 0; i < trainImgCount; i++) {
             //// 中值滤波
@@ -366,6 +385,12 @@ int main() {
             //medianBlur(trainSetR[i], tempEnhanceR, 3);
             //trainSetL[i] = tempEnhanceL.clone();
             //trainSetR[i] = tempEnhanceR.clone();
+
+            // 畸变矫正
+            if(doDistortionCorrect) {
+                undistort(trainSetL[i].clone(), trainSetL[i], cameraMatrixL, distCoeffsL);
+                undistort(trainSetR[i].clone(), trainSetR[i], cameraMatrixR, distCoeffsR);
+            }
 
             if(doEnhance) {
                 // CLAHE增强
@@ -391,6 +416,7 @@ int main() {
 
             imshow("train_leftcam", trainSetL[i]);
             imshow("train_rightcam", trainSetR[i]);
+
             // 逐图像选取ROI
             setMouseCallback("train_leftcam", onMouseL_ROI_Train, (void *)&i);
             setMouseCallback("train_rightcam", onMouseR_ROI_Train, (void *)&i);
@@ -449,21 +475,29 @@ int main() {
                 }
             }
 
-            // 保存匹配点
-            allCorrPointsL.push_back(objectPointsL);
-            allCorrPointsR.push_back(objectPointsR);
-            corrPointsCount += objectPointsL.size();
-
             // 重建坐标
             reconstruct(cameraMatrixL, cameraMatrixR, R, T,
                         objectPointsL, objectPointsR, structure);
             toPoints3D(structure, structure3D);
             // 中位线距离
             dist = ranging(structure3D, R, T);
-            for(auto iter = dist.cbegin(); iter < dist.cend(); ++iter) {
-                cout << "测距点深度 " << *iter << " m" << endl;
+
+            // 输出距离
+            double range;
+            if(dist.size() > 1) {
+                // 对求出的距离取中位数
+                int len = dist.size();
+                sort(dist.begin(), dist.end());
+                if(len % 2) {
+                    range = (dist[len / 2 - 1] + dist[len / 2]) / 2;
+                } else {
+                    range = dist[len / 2];
+                }
+            } else {
+                range = dist[0];
             }
-            cout << endl;
+            cout << "目标距离(用于训练) " << range << " m" << endl << endl;
+            trainVal[i] = range;
             waitKey();
 
             // 记录ground truth
@@ -474,27 +508,35 @@ int main() {
             destroyAllWindows();
         }
 
-        // 记录所有训练图像的匹配点坐标
-        saveCorrspondingPoints("CorrPoints.yaml", cameraMatrixL, cameraMatrixR, R, T, allCorrPointsL, allCorrPointsR, corrPointsCount, groundTruth);
-        cout << "已记录所有匹配点坐标，训练完成后回车继续" << endl;
-        waitKey();
-
-        cout << "输入训练后的参数：" << endl;
-        cout << "K1 = " << endl;
-        cin >> cameraMatrixL.at<double>(0, 0) >> cameraMatrixL.at<double>(0, 1) >> cameraMatrixL.at<double>(0, 2);
-        cin >> cameraMatrixL.at<double>(1, 0) >> cameraMatrixL.at<double>(1, 1) >> cameraMatrixL.at<double>(1, 2);
-        cin >> cameraMatrixL.at<double>(2, 0) >> cameraMatrixL.at<double>(2, 1) >> cameraMatrixL.at<double>(2, 2);
-        cout << "K2 = " << endl;
-        cin >> cameraMatrixR.at<double>(0, 0) >> cameraMatrixR.at<double>(0, 1) >> cameraMatrixR.at<double>(0, 2);
-        cin >> cameraMatrixR.at<double>(1, 0) >> cameraMatrixR.at<double>(1, 1) >> cameraMatrixR.at<double>(1, 2);
-        cin >> cameraMatrixR.at<double>(2, 0) >> cameraMatrixR.at<double>(2, 1) >> cameraMatrixR.at<double>(2, 2);
-        cout << "R = " << endl;
-        cin >> R.at<double>(0, 0) >> R.at<double>(0, 1) >> R.at<double>(0, 2);
-        cin >> R.at<double>(1, 0) >> R.at<double>(1, 1) >> R.at<double>(1, 2);
-        cin >> R.at<double>(2, 0) >> R.at<double>(2, 1) >> R.at<double>(2, 2);
-        cout << endl << "t = " << endl;
-        cin >> T.at<double>(0, 0) >> T.at<double>(1, 0) >> T.at<double>(2, 0);
+        cout << "开始训练补偿模型……" << endl;
+        // MEX code
+        if(!createFitInitialize()) {
+            cout << "拟合初始化失败" << endl;
+            return -1;
+        }
+        // mwArray
+        mwArray mwFitResult(4, 1, mxDOUBLE_CLASS);
+        mwArray mwGoF(5, 1, mxDOUBLE_CLASS);
+        mwArray mwTrain(trainImgCount, 1, mxDOUBLE_CLASS);
+        mwArray mwTest(trainImgCount, 1, mxDOUBLE_CLASS);
+        mwArray mwFlag(1, 1, mxLOGICAL_CLASS);
+        mxLogical mxFlag = false;
+        // Set data
+        mwTrain.SetData(&trainVal[0], trainImgCount);
+        mwTest.SetData(&groundTruth[0], trainImgCount);
+        mwFlag.SetLogicalData(&mxFlag, 1);
+        // Fit
+        createFit(2, mwFitResult, mwGoF, mwTrain, mwTest, mwFlag);
+        // Get result
+        double fitResult[4];
+        double gof[5];
+        mwFitResult.GetData(fitResult, 4);
+        mwGoF.GetData(gof, 5);
+        createFitTerminate();
+        cout << "补偿模型：" << endl;
+        cout << "f(x) = " << fitResult[0] << "*exp(" << fitResult[1] << "*x) + " << fitResult[2] << "*exp(" << fitResult[3] << "*x)" << endl;
     }
+
 
     // 测试
     // 读取左目测距图像
@@ -511,11 +553,19 @@ int main() {
     }
 
     for(int i = 0; i < testImgCount; i++) {
-        //// 中值滤波
+        // 双边滤波
+        bilateralFilter(testSetL[i], tempEnhanceL, 5, 10, 3);
+        bilateralFilter(testSetR[i], tempEnhanceR, 5, 10, 3);
         //medianBlur(testSetL[i], tempEnhanceL, 3);
         //medianBlur(testSetR[i], tempEnhanceR, 3);
-        //testSetL[i] = tempEnhanceL.clone();
-        //testSetR[i] = tempEnhanceR.clone();
+        testSetL[i] = tempEnhanceL.clone();
+        testSetR[i] = tempEnhanceR.clone();
+
+        // 畸变矫正
+        if(doDistortionCorrect) {
+            undistort(testSetL[i].clone(), testSetL[i], cameraMatrixL, distCoeffsL);
+            undistort(testSetR[i].clone(), testSetR[i], cameraMatrixR, distCoeffsR);
+        }
 
         if(doEnhance) {
             // CLAHE增强
@@ -541,8 +591,50 @@ int main() {
 
         imshow("Ranging_leftcam", testSetL[i]);
         imshow("Ranging_rightcam", testSetR[i]);
-        if(manualPoints) {
-            // 逐图像选取同名点
+        
+        // 逐图像选取ROI
+        setMouseCallback("Ranging_leftcam", onMouseL_ROI, (void *)&i);
+        setMouseCallback("Ranging_rightcam", onMouseR_ROI, (void *)&i);
+        cout << "在第" << i + 1 << "组图像中各选择一个ROI进行特征匹配：" << endl;
+        waitKey();
+        cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
+        cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
+        cout << "ROI大小：L(" << roiL.width << ", " << roiL.height << ")   ";
+        cout << "R(" << roiR.width << ", " << roiR.height << ")" << endl;
+        cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+            
+        vector<vector<KeyPoint>> keyPoints4All;
+        vector<Mat> descriptor4All;
+        vector<vector<Vec3b>> colors4All;
+        vector<DMatch> matches;
+        vector<Mat> rois = { roiImgL, roiImgR };
+        vector<KeyPoint> kp1, kp2;
+        Mat show;
+
+        switch(type) {
+        case SIFT:
+            // 局部特征匹配
+            extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
+            matchSIFTFeatures(descriptor4All[0], descriptor4All[1], matches);
+            getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, objectPointsL, objectPointsR);
+            getMatchedColors(colors4All[0], colors4All[1], matches, objectColorsL, objectColorsR);
+            // 显示匹配结果
+            getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, kp1, kp2);
+            show = DrawInlier(roiImgL, roiImgR, kp1, kp2, 1);
+            imshow("matches", show);
+            break;
+        case GMS:
+            gmsMatch(roiImgL, roiImgR, objectPointsL, objectPointsR);
+            break;
+        default:
+            break;
+        }
+
+        if(objectPointsL.size() == 0) {
+            cout << "没有找到匹配点，手动选择一组" << endl;
+            imshow("Ranging_leftcam", testSetL[i]);
+            imshow("Ranging_rightcam", testSetR[i]);
+            // 手动选择一组点
             targetL = Point(0, 0);
             targetR = Point(0, 0);
             setMouseCallback("Ranging_leftcam", onMouseL, (void *)&i);
@@ -552,91 +644,59 @@ int main() {
             cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
             cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
             cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
-            // 重建坐标
             objectPointsL.clear();
             objectPointsR.clear();
             objectPointsL.push_back(targetL);
             objectPointsR.push_back(targetR);
-            reconstruct(cameraMatrixL, cameraMatrixR, R, T,
-                        objectPointsL, objectPointsR, structure);
-            toPoints3D(structure, structure3D);
-            // 中位线距离
-            dist = ranging(structure3D, R, T);
-            cout << "测距点深度 " << dist[0] << " m" << endl << endl;
-            cout << "------------------------------------------" << endl << endl;
-            waitKey();
         } else {
-            // 逐图像选取ROI
-            setMouseCallback("Ranging_leftcam", onMouseL_ROI, (void *)&i);
-            setMouseCallback("Ranging_rightcam", onMouseR_ROI, (void *)&i);
-            cout << "在第" << i + 1 << "组图像中各选择一个ROI进行特征匹配：" << endl;
-            waitKey();
-            cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
-            cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
-            cout << "ROI大小：L(" << roiL.width << ", " << roiL.height << ")   ";
-            cout << "R(" << roiR.width << ", " << roiR.height << ")" << endl;
-            cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+            // 将ROI坐标恢复到原图像中
+            for(int i = 0; i < objectPointsL.size(); i++) {
+                objectPointsL[i] += Point2f(roiL.x, roiL.y);
+                objectPointsR[i] += Point2f(roiR.x, roiR.y);
+            }
+        }
+
+        // 重建坐标
+        reconstruct(cameraMatrixL, cameraMatrixR, R, T,
+                    objectPointsL, objectPointsR, structure);
+        toPoints3D(structure, structure3D);
+        // 中位线距离
+        dist = ranging(structure3D, R, T);
             
-            vector<vector<KeyPoint>> keyPoints4All;
-            vector<Mat> descriptor4All;
-            vector<vector<Vec3b>> colors4All;
-            vector<DMatch> matches;
-            vector<Mat> rois = { roiImgL, roiImgR };
-
-            switch(type) {
-            case SIFT:
-                // 局部特征匹配
-                extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
-                matchSIFTFeatures(descriptor4All[0], descriptor4All[1], matches);
-                getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, objectPointsL, objectPointsR);
-                getMatchedColors(colors4All[0], colors4All[1], matches, objectColorsL, objectColorsR);
-                break;
-            case GMS:
-                gmsMatch(roiImgL, roiImgR, objectPointsL, objectPointsR);
-                break;
-            default:
-                break;
-            }
-
-            if(objectPointsL.size() == 0) {
-                cout << "没有找到匹配点，手动选择一组" << endl;
-                imshow("Ranging_leftcam", testSetL[i]);
-                imshow("Ranging_rightcam", testSetR[i]);
-                // 手动选择一组点
-                targetL = Point(0, 0);
-                targetR = Point(0, 0);
-                setMouseCallback("Ranging_leftcam", onMouseL, (void *)&i);
-                setMouseCallback("Ranging_rightcam", onMouseR, (void *)&i);
-                cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
-                waitKey();
-                cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
-                cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
-                cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
-                objectPointsL.clear();
-                objectPointsR.clear();
-                objectPointsL.push_back(targetL);
-                objectPointsR.push_back(targetR);
-            } else {
-                // 将ROI坐标恢复到原图像中
-                for(int i = 0; i < objectPointsL.size(); i++) {
-                    objectPointsL[i] += Point2f(roiL.x, roiL.y);
-                    objectPointsR[i] += Point2f(roiR.x, roiR.y);
+        // 输出距离
+        if(processRange) {
+            double range;
+            if(dist.size() > 1) {
+                // 对求出的距离取中位数
+                int len = dist.size();
+                sort(dist.begin(), dist.end());
+                if(len % 2) {
+                    range = (dist[len / 2 - 1] + dist[len / 2]) / 2;
+                } else {
+                    range = dist[len / 2];
                 }
+            } else {
+                range = dist[0];
             }
-
-            // 重建坐标
-            reconstruct(cameraMatrixL, cameraMatrixR, R, T,
-                        objectPointsL, objectPointsR, structure);
-            toPoints3D(structure, structure3D);
-            // 中位线距离
-            dist = ranging(structure3D, R, T);
+            //进行距离补偿
+            if(doCompensate) {
+                range = compensate(37.2, 0.01229, -38.83, -0.01031, range);
+                cout << "目标距离(补偿) " << range << " m" << endl;
+            } else {
+                cout << "目标距离(未补偿) " << range << " m" << endl;
+            }
+            // foutTest << num2str(i + 1) + ": " << range << " m" << endl;
+            foutTest << range << endl;
+        } else {
+            // TEST：直接输出所有原始值
             for(auto iter = dist.cbegin(); iter < dist.cend(); ++iter) {
-                cout << "测距点深度 " << *iter << " m" << endl;
+                cout << "目标距离(未补偿) " << *iter << " m" << endl;
             }
             cout << endl;
-            waitKey();
-            destroyAllWindows();
         }
+
+        waitKey();
+        destroyAllWindows();
     }
 
     system("pause");
