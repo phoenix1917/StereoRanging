@@ -94,3 +94,7 @@ Mat DrawInlier(Mat &src1, Mat &src2, vector<KeyPoint> &kpt1, vector<KeyPoint> &k
 inline void imresize(Mat &src, int height);
 
 double compensate(double a, double b, double c, double d, double x);
+
+double compensatePoly(Mat coef, double x);
+
+Mat polyfit2(vector<Point2f> &chain, int n);

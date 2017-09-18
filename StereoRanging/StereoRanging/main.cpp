@@ -49,7 +49,8 @@ int main() {
     Mat distCoeffsR = Mat::zeros(5, 1, CV_64F);
     // 双目外参，本征矩阵，基础矩阵
     Mat R, T, E, F;
-
+    // 补偿参数
+    Mat coef;
     
     // 读取左目图像
     while(getline(finL, fileName)) {
@@ -375,9 +376,9 @@ int main() {
         }
 
         // 用于保存所有图像的测距值
-        vector<double> trainVal(trainImgCount);
+        vector<float> trainVal(trainImgCount);
         // 训练图像中的目标真实距离
-        vector<double> groundTruth(trainImgCount);
+        vector<float> groundTruth(trainImgCount);
 
         for(int i = 0; i < trainImgCount; i++) {
             //// 中值滤波
@@ -509,32 +510,43 @@ int main() {
         }
 
         cout << "开始训练补偿模型……" << endl;
-        // MEX code
-        if(!createFitInitialize()) {
-            cout << "拟合初始化失败" << endl;
-            return -1;
+        
+        vector<Point2f> trainPoints;
+        for(int i = 0; i < trainVal.size(); i++) {
+            trainPoints.push_back(Point2f(trainVal[i], groundTruth[i]));
         }
-        // mwArray
-        mwArray mwFitResult(4, 1, mxDOUBLE_CLASS);
-        mwArray mwGoF(5, 1, mxDOUBLE_CLASS);
-        mwArray mwTrain(trainImgCount, 1, mxDOUBLE_CLASS);
-        mwArray mwTest(trainImgCount, 1, mxDOUBLE_CLASS);
-        mwArray mwFlag(1, 1, mxLOGICAL_CLASS);
-        mxLogical mxFlag = false;
-        // Set data
-        mwTrain.SetData(&trainVal[0], trainImgCount);
-        mwTest.SetData(&groundTruth[0], trainImgCount);
-        mwFlag.SetLogicalData(&mxFlag, 1);
-        // Fit
-        createFit(2, mwFitResult, mwGoF, mwTrain, mwTest, mwFlag);
-        // Get result
-        double fitResult[4];
-        double gof[5];
-        mwFitResult.GetData(fitResult, 4);
-        mwGoF.GetData(gof, 5);
-        createFitTerminate();
-        cout << "补偿模型：" << endl;
-        cout << "f(x) = " << fitResult[0] << "*exp(" << fitResult[1] << "*x) + " << fitResult[2] << "*exp(" << fitResult[3] << "*x)" << endl;
+        coef = polyfit2(trainPoints, 4);
+
+        //cout << "补偿模型：" << endl;
+        //cout << "f(x) = " << coef.at<float>(0) << "+" << coef.at<float>(1) << "x+" << coef.at<float>(2) << "x^2+" << coef.at<float>(3) << "x^3+" << coef.at<float>(4) << "x^4" << endl;
+        cout << "完成" << endl;
+
+        //// MEX code
+        //if(!createFitInitialize()) {
+        //    cout << "拟合初始化失败" << endl;
+        //    return -1;
+        //}
+        //// mwArray
+        //mwArray mwFitResult(4, 1, mxDOUBLE_CLASS);
+        //mwArray mwGoF(5, 1, mxDOUBLE_CLASS);
+        //mwArray mwTrain(trainImgCount, 1, mxDOUBLE_CLASS);
+        //mwArray mwTest(trainImgCount, 1, mxDOUBLE_CLASS);
+        //mwArray mwFlag(1, 1, mxLOGICAL_CLASS);
+        //mxLogical mxFlag = false;
+        //// Set data
+        //mwTrain.SetData(&trainVal[0], trainImgCount);
+        //mwTest.SetData(&groundTruth[0], trainImgCount);
+        //mwFlag.SetLogicalData(&mxFlag, 1);
+        //// Fit
+        //createFit(2, mwFitResult, mwGoF, mwTrain, mwTest, mwFlag);
+        //// Get result
+        //double fitResult[4];
+        //double gof[5];
+        //mwFitResult.GetData(fitResult, 4);
+        //mwGoF.GetData(gof, 5);
+        //createFitTerminate();
+        //cout << "补偿模型：" << endl;
+        //cout << "f(x) = " << fitResult[0] << "*exp(" << fitResult[1] << "*x) + " << fitResult[2] << "*exp(" << fitResult[3] << "*x)" << endl;
     }
 
 
@@ -679,8 +691,11 @@ int main() {
                 range = dist[0];
             }
             //进行距离补偿
-            if(doCompensate) {
-                range = compensate(37.2, 0.01229, -38.83, -0.01031, range);
+            if(doTrain) {
+                // 二阶指数
+                //range = compensate(37.2, 0.01229, -38.83, -0.01031, range);
+                // 多项式
+                range = compensatePoly(coef, range);
                 cout << "目标距离(补偿) " << range << " m" << endl;
             } else {
                 cout << "目标距离(未补偿) " << range << " m" << endl;

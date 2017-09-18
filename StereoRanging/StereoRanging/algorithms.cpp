@@ -335,3 +335,41 @@ double compensate(double a, double b, double c, double d, double x) {
      double k = a * exp(b * x) + c * exp(d * x);
      return k;
 }
+
+double compensatePoly(Mat coef, double x) {
+    double k = coef.at<float>(0);
+    for(int i = 1; i < coef.rows; i++) {
+        k += coef.at<float>(i) * pow(x, i);
+    }
+    return k;
+}
+
+Mat polyfit2(vector<Point2f> &chain, int n) {
+    Mat y(chain.size(), 1, CV_32F, Scalar::all(0));
+    /* ********【预声明phy超定矩阵】************************/
+    /* 多项式拟合的函数为多项幂函数
+    * f(x)=a0+a1*x+a2*x^2+a3*x^3+......+an*x^n
+    * a0、a1、a2......an是幂系数，也是拟合所求的未知量。设有m个抽样点，则：
+    * 超定矩阵phy=1 x1 x1^2 ... ...  x1^n
+    *            1 x2 x2^2 ... ...  x2^n
+    *            1 x3 x3^2 ... ...  x3^n
+    *              ... ... ... ...
+    *              ... ... ... ...
+    *            1 xm xm^2 ... ...  xm^n
+    *
+    * *************************************************/
+    cv::Mat phy(chain.size(), n, CV_32F, Scalar::all(0));
+    for(int i = 0; i<phy.rows; i++) {
+        float* pr = phy.ptr<float>(i);
+        for(int j = 0; j<phy.cols; j++) {
+            pr[j] = pow(chain[i].x, j);
+        }
+        y.at<float>(i) = chain[i].y;
+    }
+    Mat phy_t = phy.t();
+    Mat phyMULphy_t = phy.t()*phy;
+    Mat phyMphyInv = phyMULphy_t.inv();
+    Mat a = phyMphyInv*phy_t;
+    a = a*y;
+    return a;
+}
