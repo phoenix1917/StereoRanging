@@ -379,7 +379,12 @@ int main() {
         // 用于保存所有图像的测距值
         vector<float> trainVal(trainImgCount);
         // 训练图像中的目标真实距离
-        vector<float> groundTruth(trainImgCount);
+        vector<float> groundTruth;
+
+        // 读取ground truth
+        while(getline(fTrainGT, fileName)) {
+            groundTruth.push_back(atof(fileName.c_str()));
+        }
 
         for(int i = 0; i < trainImgCount; i++) {
             //// 中值滤波
@@ -498,37 +503,33 @@ int main() {
             } else {
                 range = dist[0];
             }
-            cout << "目标距离(用于训练) " << range << " m" << endl << endl;
+            cout << "目标距离(用于训练) " << range << " m" << endl;
             trainVal[i] = range;
+            // ground truth
+            cout << "测距点实际距离： " << groundTruth[i] << " m" << endl << endl;
             waitKey();
-
-            // 记录ground truth
-            cout << "输入测距点实际距离： ";
-            cin >> groundTruth[i];
-            cout << endl;
 
             destroyAllWindows();
         }
 
-        cout << "开始训练补偿模型……" << endl;
+        cout << "开始训练补偿模型" << endl;
+        cout << "----------------------------------" << endl;
         switch(fit) {
         case Poly:
             // 多项式拟合
             coef = polyfit2(trainVal, groundTruth, 4);
-            //cout << "补偿模型：" << endl;
-            //cout << "f(x) = " << coef.at<float>(0) << "+" << coef.at<float>(1) << "x+" << coef.at<float>(2) << "x^2+" << coef.at<float>(3) << "x^3" << endl;
             break;
         case Exp2:
             // 二阶指数拟合
             coef = exp2fit(trainVal, groundTruth, 0.01);
-            //cout << "补偿模型：" << endl;
-            //cout << "f(x) = " << fitResult[0] << "*exp(" << fitResult[1] << "*x) + " << fitResult[2] << "*exp(" << fitResult[3] << "*x)" << endl;
             break;
         default:
             break;
         }
-        saveTrainResults("../data/" + dataset + "/result_" + trainset + "_" + calibset + ".yaml",
-                         cameraMatrixL, cameraMatrixR, R, T, trainVal, groundTruth, fit, coef);
+        printCoef(coef, fit);
+        saveTrainResults(trainResult, cameraMatrixL, distCoeffsL, cameraMatrixR, 
+                         distCoeffsR, R, T, trainVal, groundTruth, fit, coef);
+        cout << "----------------------------------" << endl;
         cout << "完成" << endl;
     }
 
@@ -580,7 +581,8 @@ int main() {
             setMouseCallback("enhance_rightcam", onEnhanceMouseR, (void *)&i);
             imshow("enhance_rightcam", tempEnhanceR);
             
-            cout << "增强图像" << endl << endl;
+            cout << "第" << i + 1 << "组图像：" << endl;
+            cout << "增强图像" << endl;
             waitKey();
         }
 
@@ -590,7 +592,7 @@ int main() {
         // 逐图像选取ROI
         setMouseCallback("Ranging_leftcam", onMouseL_ROI, (void *)&i);
         setMouseCallback("Ranging_rightcam", onMouseR_ROI, (void *)&i);
-        cout << "在第" << i + 1 << "组图像中各选择一个ROI进行特征匹配：" << endl;
+        cout << "在图像中各选择一个ROI进行特征匹配：" << endl;
         waitKey();
         cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
         cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
@@ -634,7 +636,7 @@ int main() {
             targetR = Point(0, 0);
             setMouseCallback("Ranging_leftcam", onMouseL, (void *)&i);
             setMouseCallback("Ranging_rightcam", onMouseR, (void *)&i);
-            cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
+            cout << "在图像中各选择一个匹配点：" << endl;
             waitKey();
             cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
             cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;

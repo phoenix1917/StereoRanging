@@ -30,10 +30,21 @@ bool doTrain = true;
 bool processRange = true;
 // 补偿模型选择
 FitType fit = Poly;
-// 特征提取方式（用于manualPoints = false）
+// 特征提取方式
 FeatureType feature = GMS;
 // ROI大小（横向半径，纵向半径）
 Size roiSize = Size(45, 75);
+
+// 使用的数据集
+String dataset = "20170909";
+// 使用的标定数据组别
+String calibset = "calib2";
+// 使用的训练数据组别
+String trainset = "train2-1";
+// 使用的测试数据组别
+String testset = "test2-all";
+// 用于保存测距值文件的后缀
+String testlabel = "compensate";
 
 // 读入的测距图像序列
 vector<Mat> trainSetL, trainSetR;
@@ -54,17 +65,6 @@ Size boardSize;
 // 标定板上每个方格的大小
 float squareSize;
 
-// 使用的数据集
-String dataset = "20170818";
-// 使用的标定数据组别
-String calibset = "calib1";
-// 使用的训练数据组别
-String trainset = "train1-2";
-// 使用的测试数据组别
-String testset = "test1-all";
-// 用于保存测距值文件的后缀
-String testlabel = "compensate";
-
 // 加载标定所用图像文件的路径
 ifstream finL("../data/" + dataset + "/" + calibset + "_L.txt");
 ifstream finR("../data/" + dataset + "/" + calibset + "_R.txt");
@@ -73,6 +73,8 @@ String pathEnhanced = "../data/" + dataset + "/" + calibset + "_enhanced/";
 // 加载训练所用图像文件的路径
 ifstream fTrainL("../data/" + dataset + "/" + trainset + "_L.txt");
 ifstream fTrainR("../data/" + dataset + "/" + trainset + "_R.txt");
+ifstream fTrainGT("../data/" + dataset + "/" + trainset + "_groundtruth(2).txt");
+String trainResult = "../data/" + dataset + "/result_" + trainset + "_" + calibset + ".yaml";
 // 加载测距所用的图像文件路径
 ifstream fTestL("../data/" + dataset + "/" + testset + "_L.txt");
 ifstream fTestR("../data/" + dataset + "/" + testset + "_R.txt");
@@ -81,10 +83,6 @@ ofstream foutTest("../data/" + dataset + "/result_" + testset + "_" + calibset +
 ofstream foutL("../data/" + dataset + "/result_" + calibset + "_L.txt");
 ofstream foutR("../data/" + dataset + "/result_" + calibset + "_R.txt");
 ofstream foutStereo("../data/" + dataset + "/result_" + calibset + "_stereo.txt");
-
-#define MAX_CLIP_LIMIT 200
-#define MAX_GRID_SIZE_X 100
-#define MAX_GRID_SIZE_Y 100
 
 /**
 * 同名点选取鼠标回调事件（左）

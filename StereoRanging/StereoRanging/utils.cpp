@@ -223,12 +223,14 @@ void saveCorrspondingPoints(string fileName, Mat K1, Mat K2, Mat R, Mat t,
     fs.release();
 }
 
-void saveTrainResults(string fileName, Mat K1, Mat K2, Mat R, Mat t,
-                      vector<float> trainVal, vector<float> groundTruth,
+void saveTrainResults(string fileName, Mat K1, Mat distCoefs1, Mat K2, Mat distCoefs2, 
+                      Mat R, Mat t, vector<float> trainVal, vector<float> groundTruth,
                       FitType fit, vector<float> coef) {
     FileStorage fs(fileName, FileStorage::WRITE);
     fs << "K1" << K1;
     fs << "K2" << K2;
+    fs << "distCoefs1" << distCoefs1;
+    fs << "distCoefs2" << distCoefs2;
     fs << "R" << R;
     fs << "t" << t;
     fs << "trainVal" << "[";
@@ -248,4 +250,38 @@ void saveTrainResults(string fileName, Mat K1, Mat K2, Mat R, Mat t,
     }
     fs << "]";
     fs.release();
+}
+
+void loadTrainResults(string fileName, Mat& K1, Mat& distCoefs1, Mat& K2, Mat& distCoefs2,
+                      Mat& R, Mat& t, FitType& fit, vector<float>& coef) {
+    FileStorage fs(fileName, FileStorage::READ);
+    fs["K1"] >> K1;
+    fs["K2"] >> K2;
+    fs["distCoefs1"] >> distCoefs1;
+    fs["distCoefs2"] >> distCoefs2;
+    fs["R"] >> R;
+    fs["t"] >> t;
+    int fitTypeNum;
+    fs["fitType"] >> fitTypeNum;
+    fit = (FitType)fitTypeNum;
+    FileNode node = fs["coef"];
+    node >> coef;
+    fs.release();
+}
+
+void printCoef(vector<float> coef, FitType fit) {
+    switch(fit) {
+    case Poly:
+        // 多项式拟合
+        cout << "补偿模型：" << endl;
+        cout << "f(x) = (" << coef[0] << ") + (" << coef[1] << ")x + (" << coef[2] << ")x^2 + (" << coef[3] << ")x^3" << endl;
+        break;
+    case Exp2:
+        // 二阶指数拟合
+        cout << "补偿模型：" << endl;
+        cout << "f(x) = (" << coef[0] << ")*exp(" << coef[1] << "*x) + (" << coef[2] << ")*exp(" << coef[3] << "*x)" << endl;
+        break;
+    default:
+        break;
+    }
 }

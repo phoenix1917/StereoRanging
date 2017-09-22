@@ -19,11 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{6DC46592-3C6B-4E0F-B9D5-F8DC9F45851F}</ProjectGuid>
+    <ProjectGuid>{56CE1079-A8F4-4112-8E16-C1825D81ADF5}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>SystemConfig</RootNamespace>
+    <RootNamespace>ProcAll</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
-    <ProjectName>SystemConfig</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -76,7 +75,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\include;E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\include\opencv;E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\include\opencv2;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\x64\vc14\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
+    <LibraryPath>E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\x64\vc14\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -84,7 +83,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\include;E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\include\opencv;E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\include\opencv2;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\x64\vc14\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
+    <LibraryPath>E:\OpenCV-3.2.0\build-3.2.0-contribe-vc14\install\x64\vc14\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -154,10 +153,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="config_main.cpp" />
+    <ClInclude Include="main.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="config_main.hpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\StereoRanging\StereoRanging.vcxproj">

@@ -15,6 +15,10 @@ using namespace std;
 enum FeatureType { SIFT, GMS };
 enum FitType { Poly, Exp2 };
 
+#define MAX_CLIP_LIMIT 200
+#define MAX_GRID_SIZE_X 100
+#define MAX_GRID_SIZE_Y 100
+
 /**
 * 数字转字符串
 * @param num     输入数字
@@ -107,4 +111,23 @@ void saveCorrspondingPoints(string fileName, Mat K1, Mat K2, Mat R, Mat t, vecto
 * @param fit 拟合模型类别
 * @param coef 拟合出的参数
 */
-void saveTrainResults(string fileName, Mat K1, Mat K2, Mat R, Mat t, vector<float> trainVal, vector<float> groundTruth, FitType fit, vector<float> coef);
+void saveTrainResults(string fileName, Mat K1, Mat distCoefs1, Mat K2, Mat distCoefs2, Mat R, Mat t, vector<float> trainVal, vector<float> groundTruth, FitType fit, vector<float> coef);
+
+/**
+* loadTrainResults 从文件中加载训练参数
+* @param fileName 保存到的文件路径
+* @param K1 第1组图像对应相机的内参数矩阵
+* @param K2 第2组图像对应相机的内参数矩阵
+* @param R 相机2相对于相机1的旋转矩阵
+* @param t 相机2相对于相机1的平移矩阵
+* @param fit 拟合模型类别
+* @param coef 拟合出的参数
+*/
+void loadTrainResults(string fileName, Mat& K1, Mat& distCoefs1, Mat& K2, Mat& distCoefs2, Mat& R, Mat& t, FitType& fit, vector<float>& coef);
+
+/**
+ * printCoef 输出补偿模型
+ * @param coef 补偿模型参数
+ * @param fit 补偿模型类型
+ */
+void printCoef(vector<float> coef, FitType fit);

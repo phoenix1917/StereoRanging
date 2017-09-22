@@ -52,6 +52,9 @@ StereoRanging/Debug
 StereoRanging/data
 StereoRanging/train
 StereoRanging/StereoRanging/x64
+StereoRanging/SystemConfig/x64
+StereoRanging/SystemTest/x64
+StereoRanging/ProcAll/x64
 StereoRanging/x64
 .vcxproj
 .vcxproj.filters
