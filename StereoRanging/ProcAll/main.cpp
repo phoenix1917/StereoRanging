@@ -361,178 +361,176 @@ int main() {
     // 测距点中位线距离
     vector<double> dist;
 
-    if(doTrain) {
-        // 训练
-        // 读取左目训练图像
-        while(getline(fTrainL, fileName)) {
-            Mat img = imread(fileName);
-            trainSetL.push_back(img);
+    // 训练
+    // 读取左目训练图像
+    while(getline(fTrainL, fileName)) {
+        Mat img = imread(fileName);
+        trainSetL.push_back(img);
+    }
+    trainImgSize = trainSetL[0].size();
+    trainImgCount = trainSetL.size();
+    // 读取右目训练图像
+    while(getline(fTrainR, fileName)) {
+        Mat img = imread(fileName);
+        trainSetR.push_back(img);
+    }
+
+    // 用于保存所有图像的测距值
+    vector<float> trainVal(trainImgCount);
+    // 训练图像中的目标真实距离
+    vector<float> groundTruth;
+
+    // 读取ground truth
+    while(getline(fTrainGT, fileName)) {
+        groundTruth.push_back(atof(fileName.c_str()));
+    }
+
+    for(int i = 0; i < trainImgCount; i++) {
+        //// 中值滤波
+        //medianBlur(trainSetL[i], tempEnhanceL, 3);
+        //medianBlur(trainSetR[i], tempEnhanceR, 3);
+        //trainSetL[i] = tempEnhanceL.clone();
+        //trainSetR[i] = tempEnhanceR.clone();
+
+        // 畸变矫正
+        if(doDistortionCorrect) {
+            undistort(trainSetL[i].clone(), trainSetL[i], cameraMatrixL, distCoeffsL);
+            undistort(trainSetR[i].clone(), trainSetR[i], cameraMatrixR, distCoeffsR);
         }
-        trainImgSize = trainSetL[0].size();
-        trainImgCount = trainSetL.size();
-        // 读取右目训练图像
-        while(getline(fTrainR, fileName)) {
-            Mat img = imread(fileName);
-            trainSetR.push_back(img);
-        }
 
-        // 用于保存所有图像的测距值
-        vector<float> trainVal(trainImgCount);
-        // 训练图像中的目标真实距离
-        vector<float> groundTruth;
+        if(doEnhance) {
+            // CLAHE增强
+            procCLAHE(trainSetL[i], tempEnhanceL, clipL / 10.0, Size(gridXL, gridYL));
+            procCLAHE(trainSetR[i], tempEnhanceR, clipR / 10.0, Size(gridXR, gridYR));
+            namedWindow("enhance_leftcam");
+            createTrackbar("Clip", "enhance_leftcam", &clipL, MAX_CLIP_LIMIT, onEnhanceTrackbarL_Train, (void *)&i);
+            createTrackbar("Grid X", "enhance_leftcam", &gridXL, MAX_GRID_SIZE_X, onEnhanceTrackbarL_Train, (void *)&i);
+            createTrackbar("Grid Y", "enhance_leftcam", &gridYL, MAX_GRID_SIZE_Y, onEnhanceTrackbarL_Train, (void *)&i);
+            setMouseCallback("enhance_leftcam", onEnhanceMouseL_Train, (void *)&i);
+            imshow("enhance_leftcam", tempEnhanceL);
 
-        // 读取ground truth
-        while(getline(fTrainGT, fileName)) {
-            groundTruth.push_back(atof(fileName.c_str()));
-        }
+            namedWindow("enhance_rightcam");
+            createTrackbar("Clip", "enhance_rightcam", &clipR, MAX_CLIP_LIMIT, onEnhanceTrackbarR_Train, (void *)&i);
+            createTrackbar("Grid X", "enhance_rightcam", &gridXR, MAX_GRID_SIZE_X, onEnhanceTrackbarR_Train, (void *)&i);
+            createTrackbar("Grid Y", "enhance_rightcam", &gridYR, MAX_GRID_SIZE_Y, onEnhanceTrackbarR_Train, (void *)&i);
+            setMouseCallback("enhance_rightcam", onEnhanceMouseR_Train, (void *)&i);
+            imshow("enhance_rightcam", tempEnhanceR);
 
-        for(int i = 0; i < trainImgCount; i++) {
-            //// 中值滤波
-            //medianBlur(trainSetL[i], tempEnhanceL, 3);
-            //medianBlur(trainSetR[i], tempEnhanceR, 3);
-            //trainSetL[i] = tempEnhanceL.clone();
-            //trainSetR[i] = tempEnhanceR.clone();
-
-            // 畸变矫正
-            if(doDistortionCorrect) {
-                undistort(trainSetL[i].clone(), trainSetL[i], cameraMatrixL, distCoeffsL);
-                undistort(trainSetR[i].clone(), trainSetR[i], cameraMatrixR, distCoeffsR);
-            }
-
-            if(doEnhance) {
-                // CLAHE增强
-                procCLAHE(trainSetL[i], tempEnhanceL, clipL / 10.0, Size(gridXL, gridYL));
-                procCLAHE(trainSetR[i], tempEnhanceR, clipR / 10.0, Size(gridXR, gridYR));
-                namedWindow("enhance_leftcam");
-                createTrackbar("Clip", "enhance_leftcam", &clipL, MAX_CLIP_LIMIT, onEnhanceTrackbarL_Train, (void *)&i);
-                createTrackbar("Grid X", "enhance_leftcam", &gridXL, MAX_GRID_SIZE_X, onEnhanceTrackbarL_Train, (void *)&i);
-                createTrackbar("Grid Y", "enhance_leftcam", &gridYL, MAX_GRID_SIZE_Y, onEnhanceTrackbarL_Train, (void *)&i);
-                setMouseCallback("enhance_leftcam", onEnhanceMouseL_Train, (void *)&i);
-                imshow("enhance_leftcam", tempEnhanceL);
-
-                namedWindow("enhance_rightcam");
-                createTrackbar("Clip", "enhance_rightcam", &clipR, MAX_CLIP_LIMIT, onEnhanceTrackbarR_Train, (void *)&i);
-                createTrackbar("Grid X", "enhance_rightcam", &gridXR, MAX_GRID_SIZE_X, onEnhanceTrackbarR_Train, (void *)&i);
-                createTrackbar("Grid Y", "enhance_rightcam", &gridYR, MAX_GRID_SIZE_Y, onEnhanceTrackbarR_Train, (void *)&i);
-                setMouseCallback("enhance_rightcam", onEnhanceMouseR_Train, (void *)&i);
-                imshow("enhance_rightcam", tempEnhanceR);
-
-                cout << "增强图像" << endl << endl;
-                waitKey();
-            }
-
-            imshow("train_leftcam", trainSetL[i]);
-            imshow("train_rightcam", trainSetR[i]);
-
-            // 逐图像选取ROI
-            setMouseCallback("train_leftcam", onMouseL_ROI_Train, (void *)&i);
-            setMouseCallback("train_rightcam", onMouseR_ROI_Train, (void *)&i);
-            cout << "在第" << i + 1 << "组图像中各选择一个ROI进行特征匹配：" << endl;
+            cout << "第" << i + 1 << "组图像：" << endl;
+            cout << "增强图像" << endl;
             waitKey();
-            cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
-            cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
-            cout << "ROI大小：L(" << roiL.width << ", " << roiL.height << ")   ";
-            cout << "R(" << roiR.width << ", " << roiR.height << ")" << endl;
-            cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
-
-            vector<vector<KeyPoint>> keyPoints4All;
-            vector<Mat> descriptor4All;
-            vector<vector<Vec3b>> colors4All;
-            vector<DMatch> matches;
-            vector<Mat> rois = { roiImgL, roiImgR };
-
-            switch(feature) {
-            case SIFT:
-                // 局部特征匹配
-                extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
-                matchSIFTFeatures(descriptor4All[0], descriptor4All[1], matches);
-                getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, objectPointsL, objectPointsR);
-                getMatchedColors(colors4All[0], colors4All[1], matches, objectColorsL, objectColorsR);
-                break;
-            case GMS:
-                gmsMatch(roiImgL, roiImgR, objectPointsL, objectPointsR);
-                break;
-            default:
-                break;
-            }
-
-            if(objectPointsL.size() == 0) {
-                cout << "没有找到匹配点，手动选择一组" << endl;
-                imshow("train_leftcam", trainSetL[i]);
-                imshow("train_rightcam", trainSetR[i]);
-                // 手动选择一组点
-                targetL = Point(0, 0);
-                targetR = Point(0, 0);
-                setMouseCallback("train_leftcam", onMouseL_Train, (void *)&i);
-                setMouseCallback("train_rightcam", onMouseR_Train, (void *)&i);
-                cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
-                waitKey();
-                cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
-                cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
-                cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
-                objectPointsL.clear();
-                objectPointsR.clear();
-                objectPointsL.push_back(targetL);
-                objectPointsR.push_back(targetR);
-            } else {
-                // 将ROI坐标恢复到原图像中
-                for(int i = 0; i < objectPointsL.size(); i++) {
-                    objectPointsL[i] += Point2f(roiL.x, roiL.y);
-                    objectPointsR[i] += Point2f(roiR.x, roiR.y);
-                }
-            }
-
-            // 重建坐标
-            reconstruct(cameraMatrixL, cameraMatrixR, R, T,
-                        objectPointsL, objectPointsR, structure);
-            toPoints3D(structure, structure3D);
-            // 中位线距离
-            dist = ranging(structure3D, R, T);
-
-            // 输出距离
-            double range;
-            if(dist.size() > 1) {
-                // 对求出的距离取中位数
-                int len = dist.size();
-                sort(dist.begin(), dist.end());
-                if(len % 2) {
-                    range = (dist[len / 2 - 1] + dist[len / 2]) / 2;
-                } else {
-                    range = dist[len / 2];
-                }
-            } else {
-                range = dist[0];
-            }
-            cout << "目标距离(用于训练) " << range << " m" << endl;
-            trainVal[i] = range;
-            // ground truth
-            cout << "测距点实际距离： " << groundTruth[i] << " m" << endl << endl;
-            waitKey();
-
-            destroyAllWindows();
         }
 
-        cout << "开始训练补偿模型" << endl;
-        cout << "----------------------------------" << endl;
-        switch(fit) {
-        case Poly:
-            // 多项式拟合
-            coef = polyfit2(trainVal, groundTruth, 4);
+        imshow("train_leftcam", trainSetL[i]);
+        imshow("train_rightcam", trainSetR[i]);
+
+        // 逐图像选取ROI
+        setMouseCallback("train_leftcam", onMouseL_ROI_Train, (void *)&i);
+        setMouseCallback("train_rightcam", onMouseR_ROI_Train, (void *)&i);
+        cout << "在图像中各选择一个ROI进行特征匹配：" << endl;
+        waitKey();
+        cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
+        cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
+        cout << "ROI大小：L(" << roiL.width << ", " << roiL.height << ")   ";
+        cout << "R(" << roiR.width << ", " << roiR.height << ")" << endl;
+        cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+
+        vector<vector<KeyPoint>> keyPoints4All;
+        vector<Mat> descriptor4All;
+        vector<vector<Vec3b>> colors4All;
+        vector<DMatch> matches;
+        vector<Mat> rois = { roiImgL, roiImgR };
+
+        switch(feature) {
+        case SIFT:
+            // 局部特征匹配
+            extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
+            matchSIFTFeatures(descriptor4All[0], descriptor4All[1], matches);
+            getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, objectPointsL, objectPointsR);
+            getMatchedColors(colors4All[0], colors4All[1], matches, objectColorsL, objectColorsR);
             break;
-        case Exp2:
-            // 二阶指数拟合
-            coef = exp2fit(trainVal, groundTruth, 0.01);
+        case GMS:
+            gmsMatch(roiImgL, roiImgR, objectPointsL, objectPointsR);
             break;
         default:
             break;
         }
-        printCoef(coef, fit);
-        saveTrainResults(trainResult, cameraMatrixL, distCoeffsL, cameraMatrixR, 
-                         distCoeffsR, R, T, trainVal, groundTruth, fit, coef);
-        cout << "----------------------------------" << endl;
-        cout << "完成" << endl;
+
+        if(objectPointsL.size() == 0) {
+            cout << "没有找到匹配点，手动选择一组" << endl;
+            imshow("train_leftcam", trainSetL[i]);
+            imshow("train_rightcam", trainSetR[i]);
+            // 手动选择一组点
+            targetL = Point(0, 0);
+            targetR = Point(0, 0);
+            setMouseCallback("train_leftcam", onMouseL_Train, (void *)&i);
+            setMouseCallback("train_rightcam", onMouseR_Train, (void *)&i);
+            cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
+            waitKey();
+            cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
+            cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
+            cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+            objectPointsL.clear();
+            objectPointsR.clear();
+            objectPointsL.push_back(targetL);
+            objectPointsR.push_back(targetR);
+        } else {
+            // 将ROI坐标恢复到原图像中
+            for(int i = 0; i < objectPointsL.size(); i++) {
+                objectPointsL[i] += Point2f(roiL.x, roiL.y);
+                objectPointsR[i] += Point2f(roiR.x, roiR.y);
+            }
+        }
+
+        // 重建坐标
+        reconstruct(cameraMatrixL, cameraMatrixR, R, T,
+                    objectPointsL, objectPointsR, structure);
+        toPoints3D(structure, structure3D);
+        // 中位线距离
+        dist = ranging(structure3D, R, T);
+
+        // 输出距离
+        double range;
+        if(dist.size() > 1) {
+            // 对求出的距离取中位数
+            int len = dist.size();
+            sort(dist.begin(), dist.end());
+            if(len % 2) {
+                range = (dist[len / 2 - 1] + dist[len / 2]) / 2;
+            } else {
+                range = dist[len / 2];
+            }
+        } else {
+            range = dist[0];
+        }
+        cout << "目标距离(用于训练) " << range << " m" << endl;
+        trainVal[i] = range;
+        // ground truth
+        cout << "测距点实际距离： " << groundTruth[i] << " m" << endl << endl;
+        waitKey();
+
+        destroyAllWindows();
     }
 
+    cout << "开始训练补偿模型" << endl;
+    cout << "----------------------------------" << endl;
+    switch(fit) {
+    case Poly:
+        // 多项式拟合
+        coef = polyfit2(trainVal, groundTruth, 4);
+        break;
+    case Exp2:
+        // 二阶指数拟合
+        coef = exp2fit(trainVal, groundTruth, 0.01);
+        break;
+    default:
+        break;
+    }
+    printCoef(coef, fit);
+    saveTrainResults(trainResult, cameraMatrixL, distCoeffsL, cameraMatrixR, 
+                        distCoeffsR, R, T, trainVal, groundTruth, fit, coef);
+    cout << "----------------------------------" << endl;
+    cout << "完成" << endl << endl;
 
     // 测试
     // 读取左目测距图像
@@ -546,6 +544,11 @@ int main() {
     while(getline(fTestR, fileName)) {
         Mat img = imread(fileName);
         testSetR.push_back(img);
+    }
+
+    // 读取真值（用于比较）
+    while(getline(fTestGT, fileName)) {
+        groundTruth.push_back(atof(fileName.c_str()));
     }
 
     for(int i = 0; i < testImgCount; i++) {
@@ -589,48 +592,7 @@ int main() {
         imshow("Ranging_leftcam", testSetL[i]);
         imshow("Ranging_rightcam", testSetR[i]);
         
-        // 逐图像选取ROI
-        setMouseCallback("Ranging_leftcam", onMouseL_ROI, (void *)&i);
-        setMouseCallback("Ranging_rightcam", onMouseR_ROI, (void *)&i);
-        cout << "在图像中各选择一个ROI进行特征匹配：" << endl;
-        waitKey();
-        cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
-        cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
-        cout << "ROI大小：L(" << roiL.width << ", " << roiL.height << ")   ";
-        cout << "R(" << roiR.width << ", " << roiR.height << ")" << endl;
-        cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
-            
-        vector<vector<KeyPoint>> keyPoints4All;
-        vector<Mat> descriptor4All;
-        vector<vector<Vec3b>> colors4All;
-        vector<DMatch> matches;
-        vector<Mat> rois = { roiImgL, roiImgR };
-        vector<KeyPoint> kp1, kp2;
-        Mat show;
-
-        switch(feature) {
-        case SIFT:
-            // 局部特征匹配
-            extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
-            matchSIFTFeatures(descriptor4All[0], descriptor4All[1], matches);
-            getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, objectPointsL, objectPointsR);
-            getMatchedColors(colors4All[0], colors4All[1], matches, objectColorsL, objectColorsR);
-            // 显示匹配结果
-            getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, kp1, kp2);
-            show = DrawInlier(roiImgL, roiImgR, kp1, kp2, 1);
-            imshow("matches", show);
-            break;
-        case GMS:
-            gmsMatch(roiImgL, roiImgR, objectPointsL, objectPointsR);
-            break;
-        default:
-            break;
-        }
-
-        if(objectPointsL.size() == 0) {
-            cout << "没有找到匹配点，手动选择一组" << endl;
-            imshow("Ranging_leftcam", testSetL[i]);
-            imshow("Ranging_rightcam", testSetR[i]);
+        if(manualPoints) {
             // 手动选择一组点
             targetL = Point(0, 0);
             targetR = Point(0, 0);
@@ -646,10 +608,68 @@ int main() {
             objectPointsL.push_back(targetL);
             objectPointsR.push_back(targetR);
         } else {
-            // 将ROI坐标恢复到原图像中
-            for(int i = 0; i < objectPointsL.size(); i++) {
-                objectPointsL[i] += Point2f(roiL.x, roiL.y);
-                objectPointsR[i] += Point2f(roiR.x, roiR.y);
+            // 逐图像选取ROI
+            setMouseCallback("Ranging_leftcam", onMouseL_ROI, (void *)&i);
+            setMouseCallback("Ranging_rightcam", onMouseR_ROI, (void *)&i);
+            cout << "在图像中各选择一个ROI进行特征匹配：" << endl;
+            waitKey();
+            cout << "ROI中心：L(" << targetL.x << ", " << targetL.y << ")   ";
+            cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
+            cout << "ROI大小：L(" << roiL.width << ", " << roiL.height << ")   ";
+            cout << "R(" << roiR.width << ", " << roiR.height << ")" << endl;
+            cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+
+            vector<vector<KeyPoint>> keyPoints4All;
+            vector<Mat> descriptor4All;
+            vector<vector<Vec3b>> colors4All;
+            vector<DMatch> matches;
+            vector<Mat> rois = { roiImgL, roiImgR };
+            vector<KeyPoint> kp1, kp2;
+            Mat show;
+
+            switch(feature) {
+            case SIFT:
+                // 局部特征匹配
+                extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
+                matchSIFTFeatures(descriptor4All[0], descriptor4All[1], matches);
+                getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, objectPointsL, objectPointsR);
+                getMatchedColors(colors4All[0], colors4All[1], matches, objectColorsL, objectColorsR);
+                // 显示匹配结果
+                getMatchedPoints(keyPoints4All[0], keyPoints4All[1], matches, kp1, kp2);
+                show = DrawInlier(roiImgL, roiImgR, kp1, kp2, 1);
+                imshow("matches", show);
+                break;
+            case GMS:
+                gmsMatch(roiImgL, roiImgR, objectPointsL, objectPointsR);
+                break;
+            default:
+                break;
+            }
+
+            if(objectPointsL.size() == 0) {
+                cout << "没有找到匹配点，手动选择一组" << endl;
+                imshow("Ranging_leftcam", testSetL[i]);
+                imshow("Ranging_rightcam", testSetR[i]);
+                // 手动选择一组点
+                targetL = Point(0, 0);
+                targetR = Point(0, 0);
+                setMouseCallback("Ranging_leftcam", onMouseL, (void *)&i);
+                setMouseCallback("Ranging_rightcam", onMouseR, (void *)&i);
+                cout << "在第" << i + 1 << "组图像中各选择一个匹配点：" << endl;
+                waitKey();
+                cout << "目标点：L(" << targetL.x << ", " << targetL.y << ")   ";
+                cout << "R(" << targetR.x << ", " << targetR.y << ")" << endl;
+                cout << ">>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+                objectPointsL.clear();
+                objectPointsR.clear();
+                objectPointsL.push_back(targetL);
+                objectPointsR.push_back(targetR);
+            } else {
+                // 将ROI坐标恢复到原图像中
+                for(int i = 0; i < objectPointsL.size(); i++) {
+                    objectPointsL[i] += Point2f(roiL.x, roiL.y);
+                    objectPointsR[i] += Point2f(roiR.x, roiR.y);
+                }
             }
         }
 
@@ -659,7 +679,7 @@ int main() {
         toPoints3D(structure, structure3D);
         // 中位线距离
         dist = ranging(structure3D, R, T);
-            
+
         // 输出距离
         if(processRange) {
             double range;
@@ -676,24 +696,23 @@ int main() {
                 range = dist[0];
             }
             //进行距离补偿
-            if(doTrain) {
-                switch(fit) {
-                case Poly:
-                    // 多项式
-                    range = compensatePoly(coef, range);
-                    break;
-                case Exp2:
-                    // 二阶指数
-                    range = compensateExp2(coef, range);
-                    break;
-                default:
-                    break;
-                }
-                cout << "目标距离(补偿) " << range << " m" << endl;
-            } else {
-                cout << "目标距离(未补偿) " << range << " m" << endl;
+            switch(fit) {
+            case Poly:
+                // 多项式
+                range = compensatePoly(coef, range);
+                break;
+            case Exp2:
+                // 二阶指数
+                range = compensateExp2(coef, range);
+                break;
+            default:
+                break;
             }
-            // foutTest << num2str(i + 1) + ": " << range << " m" << endl;
+            cout << "经过修正的目标距离：" << range << " m" << endl;
+            if(groundTruth[i]) {
+                cout << "测距仪测量出的目标距离：" << groundTruth[i] << " m" << endl;
+                cout << "误差 " << range - groundTruth[i] << " m (" << abs(range - groundTruth[i]) * 100 / groundTruth[i] << "%)" << endl << endl;
+            }
             foutTest << range << endl;
         } else {
             // TEST：直接输出所有原始值

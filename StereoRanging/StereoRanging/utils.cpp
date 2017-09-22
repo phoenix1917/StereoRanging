@@ -13,6 +13,79 @@
 using namespace cv;
 using namespace std;
 
+// 显示角点提取结果
+bool showCornerExt = false;
+// 进行单目标定（true通过单目标定确定内参，false输入内参）
+bool doSingleCalib = true;
+// 进行双目标定（true通过双目标定确定外参，false输入外参）
+bool doStereoCalib = true;
+// 增强图像
+bool doEnhance = true;
+// 保存增强的图像（标定图像）
+bool doSaveEnhancedImg = false;
+// 进行畸变矫正
+bool doDistortionCorrect = false;
+// 对匹配点的距离进行处理，得到唯一值（true返回唯一值，false返回所有匹配点距离）
+bool processRange = true;
+// 手动选取测距点
+bool manualPoints = false;
+// 补偿模型选择
+FitType fit = Poly;
+// 特征提取方式
+FeatureType feature = GMS;
+// ROI大小（横向半径，纵向半径）
+Size roiSize = Size(45, 75);
+
+// 使用的数据集
+String dataset = "20170909";
+// 使用的标定数据组别
+String calibset = "calib2";
+// 使用的训练数据组别
+String trainset = "train2-1";
+// 使用的测试数据组别
+String testset = "test2-all";
+// 用于保存测距值文件的后缀
+String testlabel = "compensate";
+
+// 读入的测距图像序列
+vector<Mat> trainSetL, trainSetR;
+vector<Mat> testSetL, testSetR;
+// 执行增强时的滑动条数据
+int clipL = 20, gridXL = 2, gridYL = 2;
+int clipR = 20, gridXR = 2, gridYR = 2;
+// 临时保存的增强图像
+Mat tempEnhanceL, tempEnhanceR;
+// 用于记录测距图像中的同名点
+Point2f targetL, targetR;
+// 用于记录测距图像中的ROI
+Rect roiL, roiR;
+// 用于特征匹配的ROI图像
+Mat roiImgL, roiImgR;
+// 使用的标定板棋盘格内角点的个数
+Size boardSize;
+// 标定板上每个方格的大小
+float squareSize;
+
+// 加载标定所用图像文件的路径
+ifstream finL("../data/" + dataset + "/" + calibset + "_L.txt");
+ifstream finR("../data/" + dataset + "/" + calibset + "_R.txt");
+// 保存增强图像（标定图像）的路径
+String pathEnhanced = "../data/" + dataset + "/" + calibset + "_enhanced/";
+// 加载训练所用图像文件的路径
+ifstream fTrainL("../data/" + dataset + "/" + trainset + "_L.txt");
+ifstream fTrainR("../data/" + dataset + "/" + trainset + "_R.txt");
+ifstream fTrainGT("../data/" + dataset + "/" + trainset + "_groundtruth(2).txt");
+String trainResult = "../data/" + dataset + "/result_" + trainset + "_" + calibset + ".yaml";
+// 加载测距所用的图像文件路径
+ifstream fTestL("../data/" + dataset + "/" + testset + "_L.txt");
+ifstream fTestR("../data/" + dataset + "/" + testset + "_R.txt");
+ifstream fTestGT("../data/" + dataset + "/" + testset + "_groundtruth(2).txt");
+ofstream foutTest("../data/" + dataset + "/result_" + testset + "_" + calibset + "_" + testlabel + ".txt");
+// 保存标定结果的文件
+ofstream foutL("../data/" + dataset + "/result_" + calibset + "_L.txt");
+ofstream foutR("../data/" + dataset + "/result_" + calibset + "_R.txt");
+ofstream foutStereo("../data/" + dataset + "/result_" + calibset + "_stereo.txt");
+
 string num2str(int num) {
     ostringstream s1;
     s1 << num;

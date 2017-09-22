@@ -15,69 +15,67 @@ using namespace cv;
 using namespace std;
 
 // 显示角点提取结果
-bool showCornerExt = false;
+extern bool showCornerExt;
 // 进行单目标定（true通过单目标定确定内参，false输入内参）
-bool doSingleCalib = true;
+extern bool doSingleCalib;
 // 进行双目标定（true通过双目标定确定外参，false输入外参）
-bool doStereoCalib = true;
+extern bool doStereoCalib;
 // 增强图像
-bool doEnhance = true;
+extern bool doEnhance;
 // 保存增强的图像（标定图像）
-bool doSaveEnhancedImg = false;
+extern bool doSaveEnhancedImg;
 // 进行畸变矫正
-bool doDistortionCorrect = false;
-// 是否训练补偿模型
-bool doTrain = true;
+extern bool doDistortionCorrect;
 // 对匹配点的距离进行处理，得到唯一值（true返回唯一值，false返回所有匹配点距离）
-bool processRange = true;
+extern bool processRange;
 // 手动选取测距点
-bool manualPoints = false;
+extern bool manualPoints;
 // 补偿模型选择
-FitType fit = Poly;
+extern FitType fit;
 // 特征提取方式
-FeatureType feature = GMS;
+extern FeatureType feature;
 // ROI大小（横向半径，纵向半径）
-Size roiSize = Size(45, 75);
+extern Size roiSize;
 
 // 使用的数据集
-String dataset = "20170909";
+extern String dataset;
 // 使用的标定数据组别
-String calibset = "calib2";
+extern String calibset;
 // 使用的训练数据组别
-String trainset = "train2-1";
+extern String trainset;
 
 // 读入的测距图像序列
-vector<Mat> trainSetL, trainSetR;
+extern vector<Mat> trainSetL, trainSetR;
 // 执行增强时的滑动条数据
-int clipL = 20, gridXL = 2, gridYL = 2;
-int clipR = 20, gridXR = 2, gridYR = 2;
+extern int clipL, gridXL, gridYL;
+extern int clipR, gridXR, gridYR;
 // 临时保存的增强图像
-Mat tempEnhanceL, tempEnhanceR;
+extern Mat tempEnhanceL, tempEnhanceR;
 // 用于记录测距图像中的同名点
-Point2f targetL, targetR;
+extern Point2f targetL, targetR;
 // 用于记录测距图像中的ROI
-Rect roiL, roiR;
+extern Rect roiL, roiR;
 // 用于特征匹配的ROI图像
-Mat roiImgL, roiImgR;
+extern Mat roiImgL, roiImgR;
 // 使用的标定板棋盘格内角点的个数
-Size boardSize;
+extern Size boardSize;
 // 标定板上每个方格的大小
-float squareSize;
+extern float squareSize;
 
 // 加载标定所用图像文件的路径
-ifstream finL("../data/" + dataset + "/" + calibset + "_L.txt");
-ifstream finR("../data/" + dataset + "/" + calibset + "_R.txt");
+extern ifstream finL;
+extern ifstream finR;
 // 保存增强图像（标定图像）的路径
-String pathEnhanced = "../data/" + dataset + "/" + calibset + "_enhanced/";
+extern String pathEnhanced;
 // 加载训练所用图像文件的路径
-ifstream fTrainL("../data/" + dataset + "/" + trainset + "_L.txt");
-ifstream fTrainR("../data/" + dataset + "/" + trainset + "_R.txt");
-ifstream fTrainGT("../data/" + dataset + "/" + trainset + "_groundtruth(2).txt");
-String trainResult = "../data/" + dataset + "/result_" + trainset + "_" + calibset + ".yaml";
+extern ifstream fTrainL;
+extern ifstream fTrainR;
+extern ifstream fTrainGT;
+extern String trainResult;
 // 保存标定结果的文件
-ofstream foutL("../data/" + dataset + "/result_" + calibset + "_L.txt");
-ofstream foutR("../data/" + dataset + "/result_" + calibset + "_R.txt");
-ofstream foutStereo("../data/" + dataset + "/result_" + calibset + "_stereo.txt");
+extern ofstream foutL;
+extern ofstream foutR;
+extern ofstream foutStereo;
 
 /**
 * 同名点选取鼠标回调事件（左）

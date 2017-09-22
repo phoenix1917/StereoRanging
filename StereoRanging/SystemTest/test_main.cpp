@@ -241,8 +241,10 @@ int main() {
                 break;
             }
             cout << "经过修正的目标距离：" << range << " m" << endl;
-            cout << "测距仪测量出的目标距离：" << groundTruth[i] << " m" << endl;
-            cout << "误差 " << range - groundTruth[i] << " m (" << abs(range - groundTruth[i]) * 100 / groundTruth[i] << "%)" << endl << endl;
+            if(groundTruth[i]) {
+                cout << "测距仪测量出的目标距离：" << groundTruth[i] << " m" << endl;
+                cout << "误差 " << range - groundTruth[i] << " m (" << abs(range - groundTruth[i]) * 100 / groundTruth[i] << "%)" << endl << endl;
+            }
             foutTest << range << endl;
         } else {
             // TEST：直接输出所有原始值
