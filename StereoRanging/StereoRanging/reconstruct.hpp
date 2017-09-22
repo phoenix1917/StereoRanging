@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <fstream>
-
 #include <opencv2\core\core.hpp>
 #include <opencv2\imgproc\imgproc.hpp>
 #include <opencv2\calib3d\calib3d.hpp>
@@ -132,29 +131,6 @@ void reconstruct(Mat& K, Mat& R1, Mat& T1, Mat& R2, Mat& T2, vector<Point2f>& p1
 * @param points3D [OutputArray] 空间坐标点
 */
 void toPoints3D(Mat& points4D, Mat& points3D);
-
-/**
-* saveStructure 保存相机位姿和点云坐标到文件
-* @param fileName
-* @param rotations
-* @param motions
-* @param structure
-* @param colors
-*/
-void saveStructure(string fileName, vector<Mat>& rotations, vector<Mat>& motions, vector<Point3f>& structure, vector<Vec3b>& colors);
-
-/**
-* saveCorrspondingPoints 保存匹配点坐标到文件
-* @param fileName 保存到的文件路径
-* @param K1 第1组图像对应相机的内参数矩阵
-* @param K2 第2组图像对应相机的内参数矩阵
-* @param R 相机2相对于相机1的旋转矩阵
-* @param t 相机2相对于相机1的平移矩阵
-* @param points1 第1组匹配点坐标
-* @param points2 第2组匹配点坐标
-* @param groundTruth 真实测距值
-*/
-void saveCorrspondingPoints(string fileName, Mat K1, Mat K2, Mat R, Mat t, vector<vector<Point2f>> points1, vector<vector<Point2f>> points2, int corrPointsCount, vector<float> groundTruth);
 
 /**
 * ranging 通过R，t计算中位线距离

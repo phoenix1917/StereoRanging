@@ -8,9 +8,10 @@
 #include <opencv2\features2d\features2d.hpp>
 #include <opencv2\xfeatures2d\nonfree.hpp>
 
-#include "main.hpp"
 #include "reconstruct.hpp"
 #include "algorithms.hpp"
+#include "utils.hpp"
+#include "main.hpp"
 
 using namespace cv;
 using namespace std;
@@ -50,7 +51,7 @@ int main() {
     // 双目外参，本征矩阵，基础矩阵
     Mat R, T, E, F;
     // 补偿参数
-    Mat coef;
+    vector<float> coef;
     
     // 读取左目图像
     while(getline(finL, fileName)) {
@@ -435,7 +436,7 @@ int main() {
             vector<DMatch> matches;
             vector<Mat> rois = { roiImgL, roiImgR };
 
-            switch(type) {
+            switch(feature) {
             case SIFT:
                 // 局部特征匹配
                 extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
@@ -510,43 +511,25 @@ int main() {
         }
 
         cout << "开始训练补偿模型……" << endl;
-        
-        vector<Point2f> trainPoints;
-        for(int i = 0; i < trainVal.size(); i++) {
-            trainPoints.push_back(Point2f(trainVal[i], groundTruth[i]));
+        switch(fit) {
+        case Poly:
+            // 多项式拟合
+            coef = polyfit2(trainVal, groundTruth, 4);
+            //cout << "补偿模型：" << endl;
+            //cout << "f(x) = " << coef.at<float>(0) << "+" << coef.at<float>(1) << "x+" << coef.at<float>(2) << "x^2+" << coef.at<float>(3) << "x^3" << endl;
+            break;
+        case Exp2:
+            // 二阶指数拟合
+            coef = exp2fit(trainVal, groundTruth, 0.01);
+            //cout << "补偿模型：" << endl;
+            //cout << "f(x) = " << fitResult[0] << "*exp(" << fitResult[1] << "*x) + " << fitResult[2] << "*exp(" << fitResult[3] << "*x)" << endl;
+            break;
+        default:
+            break;
         }
-        coef = polyfit2(trainPoints, 4);
-
-        //cout << "补偿模型：" << endl;
-        //cout << "f(x) = " << coef.at<float>(0) << "+" << coef.at<float>(1) << "x+" << coef.at<float>(2) << "x^2+" << coef.at<float>(3) << "x^3+" << coef.at<float>(4) << "x^4" << endl;
+        saveTrainResults("../data/" + dataset + "/result_" + trainset + "_" + calibset + ".yaml",
+                         cameraMatrixL, cameraMatrixR, R, T, trainVal, groundTruth, fit, coef);
         cout << "完成" << endl;
-
-        //// MEX code
-        //if(!createFitInitialize()) {
-        //    cout << "拟合初始化失败" << endl;
-        //    return -1;
-        //}
-        //// mwArray
-        //mwArray mwFitResult(4, 1, mxDOUBLE_CLASS);
-        //mwArray mwGoF(5, 1, mxDOUBLE_CLASS);
-        //mwArray mwTrain(trainImgCount, 1, mxDOUBLE_CLASS);
-        //mwArray mwTest(trainImgCount, 1, mxDOUBLE_CLASS);
-        //mwArray mwFlag(1, 1, mxLOGICAL_CLASS);
-        //mxLogical mxFlag = false;
-        //// Set data
-        //mwTrain.SetData(&trainVal[0], trainImgCount);
-        //mwTest.SetData(&groundTruth[0], trainImgCount);
-        //mwFlag.SetLogicalData(&mxFlag, 1);
-        //// Fit
-        //createFit(2, mwFitResult, mwGoF, mwTrain, mwTest, mwFlag);
-        //// Get result
-        //double fitResult[4];
-        //double gof[5];
-        //mwFitResult.GetData(fitResult, 4);
-        //mwGoF.GetData(gof, 5);
-        //createFitTerminate();
-        //cout << "补偿模型：" << endl;
-        //cout << "f(x) = " << fitResult[0] << "*exp(" << fitResult[1] << "*x) + " << fitResult[2] << "*exp(" << fitResult[3] << "*x)" << endl;
     }
 
 
@@ -623,7 +606,7 @@ int main() {
         vector<KeyPoint> kp1, kp2;
         Mat show;
 
-        switch(type) {
+        switch(feature) {
         case SIFT:
             // 局部特征匹配
             extractSIFTFeatures(rois, keyPoints4All, descriptor4All, colors4All);
@@ -692,10 +675,18 @@ int main() {
             }
             //进行距离补偿
             if(doTrain) {
-                // 二阶指数
-                //range = compensate(37.2, 0.01229, -38.83, -0.01031, range);
-                // 多项式
-                range = compensatePoly(coef, range);
+                switch(fit) {
+                case Poly:
+                    // 多项式
+                    range = compensatePoly(coef, range);
+                    break;
+                case Exp2:
+                    // 二阶指数
+                    range = compensateExp2(coef, range);
+                    break;
+                default:
+                    break;
+                }
                 cout << "目标距离(补偿) " << range << " m" << endl;
             } else {
                 cout << "目标距离(未补偿) " << range << " m" << endl;
@@ -816,45 +807,6 @@ void onMouseR_ROI_Train(int event, int x, int y, int flags, void *param) {
     }
 }
 
-void getROI(Mat& img, Point center, Size roiSize, Rect& roi, Mat& roiImg) {
-    Point startPoint, endPoint;
-    Size imgSize = img.size();
-
-    // x
-    if(roiSize.width * 2 + 1 > imgSize.width) {
-        startPoint.x = 0;
-        endPoint.x = imgSize.width;
-    } else if(center.x < roiSize.width) {
-        startPoint.x = 0;
-        endPoint.x = center.x + roiSize.width;
-    } else if(center.x > imgSize.width - roiSize.width) {
-        startPoint.x = imgSize.width;
-        endPoint.x = center.x - roiSize.width;
-    } else {
-        startPoint.x = center.x - roiSize.width;
-        endPoint.x = center.x + roiSize.width;
-    }
-
-    // y
-    if(roiSize.height * 2 + 1 > imgSize.height) {
-        startPoint.y = 0;
-        endPoint.y = imgSize.height;
-    } else if(center.y < roiSize.height) {
-        startPoint.y = 0;
-        endPoint.y = center.y + roiSize.height;
-    } else if(center.y > imgSize.height - roiSize.height) {
-        startPoint.y = imgSize.height;
-        endPoint.y = center.y - roiSize.height;
-    } else {
-        startPoint.y = center.y - roiSize.height;
-        endPoint.y = center.y + roiSize.height;
-    }
-
-    // 返回ROI及图像
-    roi = Rect(startPoint, endPoint);
-    roiImg = img(roi).clone();
-}
-
 void onEnhanceTrackbarL(int pos, void *userdata) {
     int *i = (int *)userdata;
     if(clipL && gridXL && gridYL) {
@@ -963,144 +915,3 @@ void onEnhanceMouseR_Train(int event, int x, int y, int flags, void* param) {
     }
 }
 
-string num2str(int num) {
-    ostringstream s1;
-    s1 << num;
-    string outStr = s1.str();
-    return(outStr);
-}
-
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError,
-                       Mat &stdDevIntrinsics, Mat &stdDevExtrinsics, vector<double> &perViewErrors) {
-    cout << "标定结果：" << endl;
-    cout << "cameraMatrix = " << endl << cameraMatrix << endl << endl;
-    cout << "distCoeffs = " << endl << distCoeffs << endl << endl;
-    cout << "reprojectionError = " << endl << reprojectionError << endl << endl;
-
-    cout << "内参数：" << endl;
-    cout << "[fx, fy] = ";
-    cout << "[" << cameraMatrix.at<double>(0, 0) << ", " << cameraMatrix.at<double>(1, 1) << "]";
-    cout << " +/- [" << stdDevIntrinsics.at<double>(0) << ", " << stdDevIntrinsics.at<double>(1) << "]" << endl;
-    cout << "[Cx, Cy] = ";
-    cout << "[" << cameraMatrix.at<double>(0, 2) << ", " << cameraMatrix.at<double>(1, 2) << "]";
-    cout << " +/- [" << stdDevIntrinsics.at<double>(2) << ", " << stdDevIntrinsics.at<double>(3) << "]" << endl;
-    cout << "[k1, k2, p1, p2, k3] = ";
-    cout << "[" << distCoeffs.at<double>(0) << ", " << distCoeffs.at<double>(1) << ", ";
-    cout << distCoeffs.at<double>(2) << ", " << distCoeffs.at<double>(3) << ", ";
-    cout << distCoeffs.at<double>(4) << "]";
-    cout << " +/- [" << stdDevIntrinsics.at<double>(4) << ", " << stdDevIntrinsics.at<double>(5) << ", ";
-    cout << stdDevIntrinsics.at<double>(6) << ", " << stdDevIntrinsics.at<double>(7) << ", ";
-    cout << stdDevIntrinsics.at<double>(8) << "]" << endl << endl;
-
-    cout << "误差：" << endl;
-    cout << "[k4, k5, k6] = ";
-    cout << "[" << stdDevIntrinsics.at<double>(9) << ", " << stdDevIntrinsics.at<double>(10) << ", ";
-    cout << stdDevIntrinsics.at<double>(11) << "]" << endl;
-    cout << "[s1, s2, s3, s4] = ";
-    cout << "[" << stdDevIntrinsics.at<double>(12) << ", " << stdDevIntrinsics.at<double>(13) << ", ";
-    cout << stdDevIntrinsics.at<double>(14) << ", " << stdDevIntrinsics.at<double>(15) << "]" << endl;
-    cout << "[tauX, tauY] = ";
-    cout << "[" << stdDevIntrinsics.at<double>(16) << ", " << stdDevIntrinsics.at<double>(17) << "]" << endl << endl;
-
-    for(int i = 0; i < stdDevExtrinsics.rows; i += 6) {
-        cout << "R" << i / 6 + 1 << " = ";
-        cout << "[" << stdDevExtrinsics.at<double>(i) << ", " << stdDevExtrinsics.at<double>(i + 1) << ", " << stdDevExtrinsics.at<double>(i + 2) << "]" << endl;
-        cout << "t" << i / 6 + 1 << " = ";
-        cout << "[" << stdDevExtrinsics.at<double>(i + 3) << ", " << stdDevExtrinsics.at<double>(i + 4) << ", " << stdDevExtrinsics.at<double>(i + 5) << "]" << endl << endl;
-    }
-    cout << endl;
-
-    int size = perViewErrors.size();
-    for(int i = 0; i < size; i++) {
-        cout << "reprojectionError[" << i + 1 << "] = " << perViewErrors[i] << endl;
-    }
-    cout << endl << endl;
-}
-
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError,
-                       Mat &stdDevIntrinsics, Mat &stdDevExtrinsics,
-                       vector<double> &perViewErrors, ofstream &fout) {
-    fout << "标定结果：" << endl;
-    fout << "cameraMatrix = " << endl << cameraMatrix << endl << endl;
-    fout << "distCoeffs = " << endl << distCoeffs << endl << endl;
-    fout << "reprojectionError = " << endl << reprojectionError << endl << endl;
-
-    fout << "内参数：" << endl;
-    fout << "[fx, fy] = ";
-    fout << "[" << cameraMatrix.at<double>(0, 0) << ", " << cameraMatrix.at<double>(1, 1) << "]";
-    fout << " +/- [" << stdDevIntrinsics.at<double>(0) << ", " << stdDevIntrinsics.at<double>(1) << "]" << endl;
-    fout << "[Cx, Cy] = ";
-    fout << "[" << cameraMatrix.at<double>(0, 2) << ", " << cameraMatrix.at<double>(1, 2) << "]";
-    fout << " +/- [" << stdDevIntrinsics.at<double>(2) << ", " << stdDevIntrinsics.at<double>(3) << "]" << endl;
-    fout << "[k1, k2, p1, p2, k3] = ";
-    fout << "[" << distCoeffs.at<double>(0) << ", " << distCoeffs.at<double>(1) << ", ";
-    fout << distCoeffs.at<double>(2) << ", " << distCoeffs.at<double>(3) << ", ";
-    fout << distCoeffs.at<double>(4) << "]";
-    fout << " +/- [" << stdDevIntrinsics.at<double>(4) << ", " << stdDevIntrinsics.at<double>(5) << ", ";
-    fout << stdDevIntrinsics.at<double>(6) << ", " << stdDevIntrinsics.at<double>(7) << ", ";
-    fout << stdDevIntrinsics.at<double>(8) << "]" << endl << endl;
-
-    fout << "误差：" << endl;
-    fout << "[k4, k5, k6] = ";
-    fout << "[" << stdDevIntrinsics.at<double>(9) << ", " << stdDevIntrinsics.at<double>(10) << ", ";
-    fout << stdDevIntrinsics.at<double>(11) << "]" << endl;
-    fout << "[s1, s2, s3, s4] = ";
-    fout << "[" << stdDevIntrinsics.at<double>(12) << ", " << stdDevIntrinsics.at<double>(13) << ", ";
-    fout << stdDevIntrinsics.at<double>(14) << ", " << stdDevIntrinsics.at<double>(15) << "]" << endl;
-    fout << "[tauX, tauY] = ";
-    fout << "[" << stdDevIntrinsics.at<double>(16) << ", " << stdDevIntrinsics.at<double>(17) << "]" << endl << endl;
-
-    for(int i = 0; i < stdDevExtrinsics.rows; i += 6) {
-        fout << "R" << i / 6 + 1 << " = ";
-        fout << "[" << stdDevExtrinsics.at<double>(i) << ", " << stdDevExtrinsics.at<double>(i + 1) << ", " << stdDevExtrinsics.at<double>(i + 2) << "]" << endl;
-        fout << "t" << i / 6 + 1 << " = ";
-        fout << "[" << stdDevExtrinsics.at<double>(i + 3) << ", " << stdDevExtrinsics.at<double>(i + 4) << ", " << stdDevExtrinsics.at<double>(i + 5) << "]" << endl << endl;
-    }
-    fout << endl;
-
-    int size = perViewErrors.size();
-    for(int i = 0; i < size; i++) {
-        fout << "reprojectionError[" << i + 1 << "] = " << perViewErrors[i] << endl;
-    }
-    fout << endl << endl;
-}
-
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs,
-                       double reprojectionError, Mat &stdDevIntrinsics) {
-    cout << "标定结果：" << endl;
-    cout << "cameraMatrix = " << endl << cameraMatrix << endl << endl;
-    cout << "distCoeffs = " << endl << distCoeffs << endl << endl;
-    cout << "reprojectionError = " << endl << reprojectionError << endl << endl;
-
-    cout << "内参数：" << endl;
-    cout << "[fx, fy] = ";
-    cout << "[" << cameraMatrix.at<double>(0, 0) << ", " << cameraMatrix.at<double>(1, 1) << "]";
-    cout << " +/- [" << stdDevIntrinsics.at<double>(0) << ", " << stdDevIntrinsics.at<double>(1) << "]" << endl;
-    cout << "[Cx, Cy] = ";
-    cout << "[" << cameraMatrix.at<double>(0, 2) << ", " << cameraMatrix.at<double>(1, 2) << "]";
-    cout << " +/- [" << stdDevIntrinsics.at<double>(2) << ", " << stdDevIntrinsics.at<double>(3) << "]" << endl;
-    cout << "[k1, k2, p1, p2, k3] = ";
-    cout << "[" << distCoeffs.at<double>(0) << ", " << distCoeffs.at<double>(1) << ", ";
-    cout << distCoeffs.at<double>(2) << ", " << distCoeffs.at<double>(3) << ", ";
-    cout << distCoeffs.at<double>(4) << "]";
-    cout << " +/- [" << stdDevIntrinsics.at<double>(4) << ", " << stdDevIntrinsics.at<double>(5) << ", ";
-    cout << stdDevIntrinsics.at<double>(6) << ", " << stdDevIntrinsics.at<double>(7) << ", ";
-    cout << stdDevIntrinsics.at<double>(8) << "]" << endl << endl << endl;
-}
-
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError) {
-    cout << endl << "标定结果：" << endl;
-    cout << "cameraMatrix = " << endl << cameraMatrix << endl << endl;
-    cout << "distCoeffs = " << endl << distCoeffs << endl << endl;
-    cout << "reprojectionError = " << endl << reprojectionError << endl << endl;
-
-    cout << "内参数：" << endl;
-    cout << "[fx, fy] = ";
-    cout << "[" << cameraMatrix.at<double>(0, 0) << ", " << cameraMatrix.at<double>(1, 1) << "]" << endl;
-    cout << "[Cx, Cy] = ";
-    cout << "[" << cameraMatrix.at<double>(0, 2) << ", " << cameraMatrix.at<double>(1, 2) << "]" << endl;
-    cout << "[k1, k2, p1, p2, k3] = ";
-    cout << "[" << distCoeffs.at<double>(0) << ", " << distCoeffs.at<double>(1) << ", ";
-    cout << distCoeffs.at<double>(2) << ", " << distCoeffs.at<double>(3) << ", ";
-    cout << distCoeffs.at<double>(4) << "]" << endl << endl;
-}

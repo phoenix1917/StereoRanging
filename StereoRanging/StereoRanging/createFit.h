@@ -1,11 +1,8 @@
 //
 // MATLAB Compiler: 6.1 (R2015b)
-// Date: Mon Sep 18 19:25:04 2017
-// Arguments: "-B" "macro_default" "-W" "cpplib:createFit" "-T" "link:lib" "-d"
-// "E:\Github\StereoRanging\StereoRanging\StereoRanging\data\20170909\test2-fit\
-// fit-lib\createFit\for_testing" "-v"
-// "E:\Github\StereoRanging\StereoRanging\StereoRanging\data\20170909\test2-fit\
-// fit-lib\createFit.m" 
+// Date: Wed Sep 20 09:40:43 2017
+// Arguments: "-B" "macro_default" "-W" "cpplib:createFit" "-T" "link:lib"
+// "createFit.m" 
 //
 
 #ifndef __createFit_h

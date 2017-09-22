@@ -1,19 +1,17 @@
 #include <iostream>
 #include <fstream>
-
 #include <opencv2\core\core.hpp>
 #include <opencv2\imgproc\imgproc.hpp>
 #include <opencv2\calib3d\calib3d.hpp>
 #include <opencv2\highgui\highgui.hpp>
 #include <opencv2\features2d\features2d.hpp>
 #include <opencv2\xfeatures2d\nonfree.hpp>
-
 #include "gms_matcher.hpp"
 #include "algorithms.hpp"
+// #include "createFit.h"
 
 using namespace cv;
 using namespace std;
-
 
 void gmsMatch(Mat &img1, Mat &img2) {
     vector<KeyPoint> kp1, kp2;
@@ -331,21 +329,21 @@ inline void imresize(Mat &src, int height) {
     resize(src, src, Size(width, height));
 }
 
-double compensate(double a, double b, double c, double d, double x) {
-     double k = a * exp(b * x) + c * exp(d * x);
+double compensateExp2(vector<float> coef, double x) {
+     double k = coef[0] * exp(coef[1] * x) + coef[2] * exp(coef[3] * x);
      return k;
 }
 
-double compensatePoly(Mat coef, double x) {
-    double k = coef.at<float>(0);
-    for(int i = 1; i < coef.rows; i++) {
-        k += coef.at<float>(i) * pow(x, i);
+double compensatePoly(vector<float> coef, double x) {
+    double k = coef[0];
+    for(int i = 1; i < coef.size(); i++) {
+        k += coef[i] * pow(x, i);
     }
     return k;
 }
 
-Mat polyfit2(vector<Point2f> &chain, int n) {
-    Mat y(chain.size(), 1, CV_32F, Scalar::all(0));
+vector<float> polyfit2(vector<float> &train, vector<float> &truth, int n) {
+    Mat y(train.size(), 1, CV_32F, Scalar::all(0));
     /* ********【预声明phy超定矩阵】************************/
     /* 多项式拟合的函数为多项幂函数
     * f(x)=a0+a1*x+a2*x^2+a3*x^3+......+an*x^n
@@ -358,18 +356,69 @@ Mat polyfit2(vector<Point2f> &chain, int n) {
     *            1 xm xm^2 ... ...  xm^n
     *
     * *************************************************/
-    cv::Mat phy(chain.size(), n, CV_32F, Scalar::all(0));
-    for(int i = 0; i<phy.rows; i++) {
+    Mat phy(train.size(), n, CV_32F, Scalar::all(0));
+    for(int i = 0; i < phy.rows; i++) {
         float* pr = phy.ptr<float>(i);
-        for(int j = 0; j<phy.cols; j++) {
-            pr[j] = pow(chain[i].x, j);
+        for(int j = 0; j < phy.cols; j++) {
+            pr[j] = pow(train[i], j);
         }
-        y.at<float>(i) = chain[i].y;
+        y.at<float>(i) = truth[i];
     }
     Mat phy_t = phy.t();
-    Mat phyMULphy_t = phy.t()*phy;
+    Mat phyMULphy_t = phy.t() * phy;
     Mat phyMphyInv = phyMULphy_t.inv();
-    Mat a = phyMphyInv*phy_t;
-    a = a*y;
-    return a;
+    Mat a = phyMphyInv * phy_t;
+    a = a * y;
+
+    vector<float> coef;
+    for(int i = 0; i < a.rows; i++) {
+        coef.push_back(a.at<float>(i));
+    }
+    return coef;
+}
+
+//vector<float> exp2fit(vector<float> &trainVal, vector<float> &groundTruth) {
+//    vector<float> coef(9);
+//    // MEX code
+//    if(!createFitInitialize()) {
+//        cout << "拟合初始化失败" << endl;
+//        return coef;
+//    }
+//    // mwArray
+//    mwArray mwFitResult(4, 1, mxDOUBLE_CLASS);
+//    mwArray mwGoF(5, 1, mxDOUBLE_CLASS);
+//    mwArray mwTrain(trainVal.size(), 1, mxDOUBLE_CLASS);
+//    mwArray mwTest(trainVal.size(), 1, mxDOUBLE_CLASS);
+//    mwArray mwFlag(1, 1, mxLOGICAL_CLASS);
+//    mxLogical mxFlag = false;
+//    // Set data
+//    mwTrain.SetData(&trainVal[0], trainVal.size());
+//    mwTest.SetData(&groundTruth[0], trainVal.size());
+//    mwFlag.SetLogicalData(&mxFlag, 1);
+//    // Fit
+//    createFit(2, mwFitResult, mwGoF, mwTrain, mwTest, mwFlag);
+//    // Get result
+//    double fitResult[4];
+//    double gof[5];
+//    mwFitResult.GetData(fitResult, 4);
+//    mwGoF.GetData(gof, 5);
+//    createFitTerminate();
+//
+//    // Transform to vector
+//    coef[0] = fitResult[0];
+//    coef[1] = fitResult[1];
+//    coef[2] = fitResult[2];
+//    coef[3] = fitResult[3];
+//    coef[4] = gof[0];
+//    coef[5] = gof[1];
+//    coef[6] = gof[2];
+//    coef[7] = gof[3];
+//    coef[8] = gof[4];
+//    return coef;
+//}
+
+vector<float> exp2fit(vector<float> &trainVal, vector<float> &groundTruth, double learningRate) {
+    vector<float> coef(9);
+
+    return coef;
 }

@@ -2,19 +2,15 @@
 
 #include <iostream>
 #include <fstream>
-
 #include <opencv2\core\core.hpp>
 #include <opencv2\imgproc\imgproc.hpp>
 #include <opencv2\calib3d\calib3d.hpp>
 #include <opencv2\highgui\highgui.hpp>
 #include <opencv2\features2d\features2d.hpp>
 #include <opencv2\xfeatures2d\nonfree.hpp>
-//#include "createFit.h"
 
 using namespace cv;
 using namespace std;
-
-enum FeatureType { SIFT, GMS };
 
 // 显示角点提取结果
 bool showCornerExt = false;
@@ -32,10 +28,10 @@ bool doDistortionCorrect = false;
 bool doTrain = true;
 // 对匹配点的距离进行处理，得到唯一值（true返回唯一值，false返回所有匹配点距离）
 bool processRange = true;
-// 对测距值进行补偿
-bool doCompensate = true;
+// 补偿模型选择
+FitType fit = Poly;
 // 特征提取方式（用于manualPoints = false）
-FeatureType type = GMS;
+FeatureType feature = GMS;
 // ROI大小（横向半径，纵向半径）
 Size roiSize = Size(45, 75);
 
@@ -59,32 +55,32 @@ Size boardSize;
 float squareSize;
 
 // 使用的数据集
-String dataset = "20170909";
+String dataset = "20170818";
 // 使用的标定数据组别
-String calibset = "calib2";
+String calibset = "calib1";
 // 使用的训练数据组别
-String trainset = "train2-2";
+String trainset = "train1-2";
 // 使用的测试数据组别
-String testset = "test2-all";
+String testset = "test1-all";
 // 用于保存测距值文件的后缀
 String testlabel = "compensate";
 
 // 加载标定所用图像文件的路径
-ifstream finL("data/" + dataset + "/" + calibset + "_L.txt");
-ifstream finR("data/" + dataset + "/" + calibset + "_R.txt");
+ifstream finL("../data/" + dataset + "/" + calibset + "_L.txt");
+ifstream finR("../data/" + dataset + "/" + calibset + "_R.txt");
 // 保存增强图像（标定图像）的路径
-String pathEnhanced = "data/" + dataset + "/" + calibset + "_enhanced/";
+String pathEnhanced = "../data/" + dataset + "/" + calibset + "_enhanced/";
 // 加载训练所用图像文件的路径
-ifstream fTrainL("data/" + dataset + "/" + trainset + "_L.txt");
-ifstream fTrainR("data/" + dataset + "/" + trainset + "_R.txt");
+ifstream fTrainL("../data/" + dataset + "/" + trainset + "_L.txt");
+ifstream fTrainR("../data/" + dataset + "/" + trainset + "_R.txt");
 // 加载测距所用的图像文件路径
-ifstream fTestL("data/" + dataset + "/" + testset + "_L.txt");
-ifstream fTestR("data/" + dataset + "/" + testset + "_R.txt");
-ofstream foutTest("data/" + dataset + "/result_" + testset + "_" + calibset + "_" + testlabel + ".txt");
+ifstream fTestL("../data/" + dataset + "/" + testset + "_L.txt");
+ifstream fTestR("../data/" + dataset + "/" + testset + "_R.txt");
+ofstream foutTest("../data/" + dataset + "/result_" + testset + "_" + calibset + "_" + testlabel + ".txt");
 // 保存标定结果的文件
-ofstream foutL("data/" + dataset + "/result_" + calibset + "_L.txt");
-ofstream foutR("data/" + dataset + "/result_" + calibset + "_R.txt");
-ofstream foutStereo("data/" + dataset + "/result_" + calibset + "_stereo.txt");
+ofstream foutL("../data/" + dataset + "/result_" + calibset + "_L.txt");
+ofstream foutR("../data/" + dataset + "/result_" + calibset + "_R.txt");
+ofstream foutStereo("../data/" + dataset + "/result_" + calibset + "_stereo.txt");
 
 #define MAX_CLIP_LIMIT 200
 #define MAX_GRID_SIZE_X 100
@@ -155,16 +151,6 @@ void onMouseR_ROI(int event, int x, int y, int flags, void *param);
 void onMouseR_ROI_Train(int event, int x, int y, int flags, void *param);
 
 /**
-* getROI 根据选取的点在输入图像上生成ROI区域，并返回ROI图像
-* @param img     [input]输入图像
-* @param center  [input]输入的ROI中心点
-* @param roiSize [input]ROI的大小（半径）
-* @param roi     [output]ROI区域位置
-* @param roiImg  [output]ROI图像
-*/
-void getROI(Mat& img, Point center, Size roiSize, Rect& roi, Mat& roiImg);
-
-/**
 * onEnhanceTrackbarL 图像增强参数调整回调（左目）
 * @param pos TrackBar当前数值
 * @param userdata 用户数据（optional）
@@ -202,59 +188,3 @@ void onEnhanceMouseL_Train(int event, int x, int y, int flags, void* param);
 void onEnhanceMouseR(int event, int x, int y, int flags, void* param);
 void onEnhanceMouseR_Train(int event, int x, int y, int flags, void* param);
 
-/**
-* 数字转字符串
-* @param num     输入数字
-* @return outStr 返回对应的字符串
-*/
-string num2str(int num);
-
-/**
-* 输出标定结果到控制台。
-* 输出内参数矩阵、畸变向量、总重投影误差；
-* 输出焦距及误差、主点坐标及误差、畸变向量及误差；
-* 输出畸变向量其他值的误差、外参数误差、每幅图像的重投影误差。
-* @param cameraMatrix
-* @param distCoeffs
-* @param reprojectionError
-* @param stdDevIntrinsics
-* @param stdDevExtrinsics
-* @param perViewErrors
-*/
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError, Mat &stdDevIntrinsics, Mat &stdDevExtrinsics, vector<double> &perViewErrors);
-
-/**
-* 输出标定结果到文件。
-* 输出内参数矩阵、畸变向量、总重投影误差；
-* 输出焦距及误差、主点坐标及误差、畸变向量及误差；
-* 输出畸变向量其他值的误差、外参数误差、每幅图像的重投影误差。
-* @param cameraMatrix
-* @param distCoeffs
-* @param reprojectionError
-* @param stdDevIntrinsics
-* @param stdDevExtrinsics
-* @param perViewErrors
-* @param fout
-*/
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError, Mat &stdDevIntrinsics, Mat &stdDevExtrinsics, vector<double> &perViewErrors, ofstream &fout);
-
-/**
-* 输出标定结果到控制台。
-* 输出内参数矩阵、畸变向量、总重投影误差；
-* 输出焦距及误差、主点坐标及误差、畸变向量及误差；
-* @param cameraMatrix
-* @param distCoeffs
-* @param reprojectionError
-* @param stdDevIntrinsics
-*/
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError, Mat &stdDevIntrinsics);
-
-/**
-* 输出标定结果到文件。
-* 输出内参数矩阵、畸变向量、总重投影误差；
-* 输出焦距、主点坐标、畸变向量；
-* @param cameraMatrix
-* @param distCoeffs
-* @param reprojectionError
-*/
-void printCalibResults(Mat &cameraMatrix, Mat &distCoeffs, double reprojectionError);

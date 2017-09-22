@@ -1,6 +1,5 @@
 #include <iostream>
 #include <fstream>
-
 #include <opencv2\core\core.hpp>
 #include <opencv2\imgproc\imgproc.hpp>
 #include <opencv2\calib3d\calib3d.hpp>
@@ -12,7 +11,6 @@
 
 using namespace cv;
 using namespace std;
-
 
 void usingBoard(int boardNum, Size& boardSize, float& squareSize) {
     switch(boardNum) {
@@ -249,71 +247,6 @@ void toPoints3D(Mat& points4D, Mat& points3D) {
         points3D.at<float>(1, i) = points4D.at<float>(1, i) / points4D.at<float>(3, i);
         points3D.at<float>(2, i) = points4D.at<float>(2, i) / points4D.at<float>(3, i);
     }
-}
-
-void saveStructure(string fileName, vector<Mat>& rotations,
-                   vector<Mat>& motions, vector<Point3f>& structure,
-                   vector<Vec3b>& colors) {
-    int n = (int)rotations.size();
-
-    FileStorage fs(fileName, FileStorage::WRITE);
-    fs << "Camera Count" << n;
-    fs << "Point Count" << (int)structure.size();
-
-    fs << "Rotations" << "[";
-    for(size_t i = 0; i < n; ++i) {
-        fs << rotations[i];
-    }
-    fs << "]";
-
-    fs << "Motions" << "[";
-    for(size_t i = 0; i < n; ++i) {
-        fs << motions[i];
-    }
-    fs << "]";
-
-    fs << "Points" << "[";
-    for(size_t i = 0; i < structure.size(); ++i) {
-        fs << structure[i];
-    }
-    fs << "]";
-
-    fs << "Colors" << "[";
-    for(size_t i = 0; i < colors.size(); ++i) {
-        fs << colors[i];
-    }
-    fs << "]";
-
-    fs.release();
-}
-
-void saveCorrspondingPoints(string fileName, Mat K1, Mat K2, Mat R, Mat t, 
-                            vector<vector<Point2f>> points1, vector<vector<Point2f>> points2, 
-                            int corrPointsCount, vector<float> groundTruth) {
-    FileStorage fs(fileName, FileStorage::WRITE);
-    fs << "K1" << K1;
-    fs << "K2" << K2;
-    fs << "R" << R;
-    fs << "t" << t;
-    fs << "ImageCount" << (int)points1.size();
-    fs << "CorrPointsCount" << corrPointsCount;
-    for(size_t i = 0; i < points1.size(); ++i) {
-        ostringstream s;
-        s << i + 1;
-        string imgNum = s.str();
-        fs << "L" + imgNum << "[:";
-        for(auto iter = points1[i].begin(); iter < points1[i].end(); ++iter) {
-            fs << *iter;
-        }
-        fs << "]";
-        fs << "R" + imgNum << "[:";
-        for(auto iter = points2[i].begin(); iter < points2[i].end(); ++iter) {
-            fs << *iter;
-        }
-        fs << "]";
-        fs << "GroundTruth" + imgNum << groundTruth[i];
-    }
-    fs.release();
 }
 
 vector<double> ranging(Mat structure, Mat R, Mat t) {

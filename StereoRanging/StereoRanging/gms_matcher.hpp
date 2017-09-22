@@ -3,11 +3,10 @@
 #include <vector>
 #include <iostream>
 #include <ctime>
-
 #include "algorithms.hpp"
 
-using namespace std;
 using namespace cv;
+using namespace std;
 
 #ifdef USE_GPU
 #include <opencv2/cudafeatures2d.hpp>
